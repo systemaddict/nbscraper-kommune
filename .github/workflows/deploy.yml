@@ -38,11 +38,20 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Update Magic Containers image
+      - name: Update worker image
         if: ${{ vars.BUNNY_APP_ID != '' }}
         uses: BunnyWay/actions/container-update-image@main
         with:
           app_id: ${{ vars.BUNNY_APP_ID }}
           api_key: ${{ secrets.BUNNYNET_API_KEY }}
           container: worker
+          image_tag: ${{ github.sha }}
+
+      - name: Update dashboard image
+        if: ${{ vars.BUNNY_APP_ID != '' }}
+        uses: BunnyWay/actions/container-update-image@main
+        with:
+          app_id: ${{ vars.BUNNY_APP_ID }}
+          api_key: ${{ secrets.BUNNYNET_API_KEY }}
+          container: dashboard
           image_tag: ${{ github.sha }}

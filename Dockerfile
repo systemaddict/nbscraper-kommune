@@ -11,11 +11,15 @@ WORKDIR /app
 # Dependencies first so a code change does not invalidate the wheel cache.
 COPY pyproject.toml README.md ./
 COPY nbkommune ./nbkommune
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e ".[api]"
 
 # Unbuffered so Magic Containers logs show worker progress live. Bunny injects
 # database credentials at runtime; they never belong in an image layer.
 ENV PYTHONUNBUFFERED=1
+
+# The default command remains the private worker. A second Magic Container can
+# reuse this image with `nbk serve --port 8000` for the status dashboard.
+EXPOSE 8000
 
 # The worker is the whole service: it seeds its own discovery tasks on boot and
 # self-reschedules, so no external cron is needed.

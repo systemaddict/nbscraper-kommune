@@ -49,7 +49,7 @@ package-dir = {"" = "."}
 include = ["nbkommune*"]
 
 [tool.setuptools.package-data]
-nbkommune = ["registry.json"]
+nbkommune = ["registry.json", "static/*.html"]
 
 [tool.ruff]
 target-version = "py312"

@@ -157,6 +157,12 @@ class Settings(BaseSettings):
     # cold regional replica can take longer than an ordinary local query.
     database_timeout_s: float = Field(default=30.0)
 
+    # ── Status dashboard ────────────────────────────────────────
+    # Bearer token for the read-only status API. Empty deliberately fails
+    # closed: a public Magic Container endpoint must not expose error messages
+    # and source URLs just because a secret was forgotten during deployment.
+    dashboard_token: str = Field(default="")
+
     # ── Scheduling / queue ──────────────────────────────────────
     # How often each target is re-discovered. News moves slower than an agenda
     # portal and 98 sites × 24/day is already plenty of traffic.

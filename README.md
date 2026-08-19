@@ -89,6 +89,8 @@ nbkommune/
   worker.py        The task loop: fast and paced lanes, leases, janitor
   repositories.py  All SQLite-compatible SQL. Nothing else touches the DB.
   db.py            Bunny libSQL/HTTP adapter + schema (idempotent)
+  api.py           Read-only status API; serves the dashboard from the same process
+  static/          Dependency-free, shadcn-inspired operational dashboard
   cli.py           The nbk CLI
 scripts/
   build_registry.py  Regenerate registry.json from the survey CSV
@@ -113,6 +115,7 @@ nbk crawl --now                    # discovery inline
 nbk crawl                          # or: queue discovery for the worker
 nbk worker                         # the service: pops and executes tasks
 nbk worker --once --max-tasks 20   # drain what is due, then exit
+nbk serve                          # read-only status API + dashboard on :8000
 nbk stats                          # per-kommune corpus + extraction health
 nbk queue / nbk errors             # what is pending, what is failing
 nbk backfill aarhus --limit 200    # ingest the still-listed backlog
@@ -127,17 +130,25 @@ python scripts/probe_sites.py --json survey.json
 
 ## Bunny deployment
 
-Production runs as a private worker on Magic Containers: it exposes no network
-endpoint, starts with `nbk worker`, and keeps exactly one replica. The single
-replica is deliberate because the queue and per-host pacing gate are global and
-Bunny Database uses SQLite's single-writer model.
+Production uses the same image for two Magic Containers: a private worker that
+starts with `nbk worker`, and a small public web container that starts with
+`nbk serve --port 8000`. The worker keeps exactly one replica. That is deliberate
+because the queue and per-host pacing gate are global and Bunny Database uses
+SQLite's single-writer model. The web process is read-only and opens a short
+database connection for each status poll.
 
 Bunny Database provides these variables to the container:
 
 ```text
 BUNNY_DATABASE_URL
 BUNNY_DATABASE_AUTH_TOKEN
+NBK_DASHBOARD_TOKEN
 ```
+
+`/healthz` and the dashboard HTML shell are public so Bunny can probe and serve
+them. `/api/status` requires `Authorization: Bearer …` and returns 503 when the
+token is missing from the container configuration. The browser asks for the
+token and retains it only in `sessionStorage` for that tab.
 
 Create and link a database with Bunny's CLI, or attach an existing database from
 its **Access > Add Secrets to Magic Container App** screen:
@@ -257,7 +268,6 @@ cached). Use `nbk reresolve <key>` when a site changes.
   column. Those articles are stored with `published_at = NULL` rather than being
   dated by a modification stamp. Fixing a site means finding a `date_selector`
   for its listing.
-- No HTTP API or web UI yet. The `api` extra reserves the dependencies.
 
 ## Tests
 

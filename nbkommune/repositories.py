@@ -311,7 +311,8 @@ def article_stats(conn: Connection) -> list[dict]:
                COUNT(*) FILTER (WHERE a.status = 'gone')     AS gone,
                COUNT(*) FILTER (WHERE a.thin)                AS thin,
                COUNT(*) FILTER (WHERE a.published_at IS NULL AND a.status = 'ingested')
-                   AS undated
+                   AS undated,
+               MAX(a.ingested_at) AS last_ingested_at
         FROM municipality m LEFT JOIN article a ON a.municipality_key = m.key
         GROUP BY m.key, m.name, m.channel, m.last_ok_at
         ORDER BY m.key
@@ -653,6 +654,13 @@ def finish_crawl_run(conn: Connection, run_id: int, stats,
          stats.queued, stats.skipped_old, error, run_id),
     )
     conn.commit()
+
+
+def recent_crawl_runs(conn: Connection, *, limit: int = 20) -> list[dict]:
+    """Latest discovery runs, newest first, for operational monitoring."""
+    return conn.execute(
+        "SELECT * FROM crawl_run ORDER BY started_at DESC LIMIT %s", (limit,)
+    ).fetchall()
 
 
 # ── meta ─────────────────────────────────────────────────────────────────────

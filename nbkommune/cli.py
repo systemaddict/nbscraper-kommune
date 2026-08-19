@@ -214,6 +214,26 @@ def worker(
     console.print(f"[green]executed {executed} task(s)[/green]")
 
 
+@app.command("serve")
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Interface to bind."),
+    port: int = typer.Option(8000, min=1, max=65535, help="HTTP port."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Serve the read-only status API and dashboard."""
+    _setup_logging(verbose)
+    try:
+        import uvicorn
+    except ImportError as exc:  # pragma: no cover - exercised by installations
+        raise typer.BadParameter(
+            'status server dependencies are missing; install with pip install -e ".[api]"'
+        ) from exc
+
+    from nbkommune.api import create_app
+
+    uvicorn.run(create_app(), host=host, port=port, log_level="debug" if verbose else "info")
+
+
 @app.command("stats")
 def stats(
     thin_only: bool = typer.Option(False, "--thin", help="Only kommuner with thin extractions."),
