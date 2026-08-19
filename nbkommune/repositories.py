@@ -290,13 +290,33 @@ def list_articles(conn: Connection, *, municipality_key: str | None = None,
         params["thin"] = thin
     clause = f"WHERE {' AND '.join(where)}" if where else ""
     return conn.execute(
-        f"""SELECT municipality_key, id, url, title, kind, status, published_at,
-                   word_count, thin, ingested_at
-            FROM article {clause}
-            ORDER BY published_at DESC NULLS LAST, first_seen_at DESC
+        f"""SELECT a.municipality_key, m.name AS municipality_name, a.id, a.url,
+                   a.title, a.kind, a.status, a.published_at, a.word_count,
+                   a.thin, a.ingested_at
+            FROM article a JOIN municipality m ON m.key = a.municipality_key
+            {clause}
+            ORDER BY a.published_at DESC NULLS LAST, a.first_seen_at DESC
             LIMIT %(limit)s OFFSET %(offset)s""",
         {**params, "limit": limit, "offset": offset},
     ).fetchall()
+
+
+def count_articles(conn: Connection, *, municipality_key: str | None = None,
+                   status: str | None = None, kind: str | None = None) -> int:
+    """Count articles using the public dashboard's list filters."""
+    where, params = [], {}
+    if municipality_key:
+        where.append("municipality_key = %(mk)s")
+        params["mk"] = municipality_key
+    if status:
+        where.append("status = %(status)s")
+        params["status"] = status
+    if kind:
+        where.append("kind = %(kind)s")
+        params["kind"] = kind
+    clause = f"WHERE {' AND '.join(where)}" if where else ""
+    row = conn.execute(f"SELECT COUNT(*) AS n FROM article {clause}", params).fetchone()
+    return int(row["n"]) if row else 0
 
 
 def article_stats(conn: Connection) -> list[dict]:

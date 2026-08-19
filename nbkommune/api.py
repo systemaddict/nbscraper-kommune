@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from importlib.resources import files
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 
 from nbkommune import db
@@ -91,6 +91,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/status")
     def status(conn: Annotated[Connection, Depends(get_conn)]) -> dict[str, Any]:
         return _snapshot(conn)
+
+    @app.get("/api/articles")
+    def articles(
+        conn: Annotated[Connection, Depends(get_conn)],
+        municipality: str | None = None,
+        kind: Literal["nyhed", "pressemeddelelse"] | None = None,
+        status: Literal["listed", "ingested", "gone"] | None = None,
+        limit: int = Query(25, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ) -> dict[str, Any]:
+        """Filterable article metadata; content stays at the original URL."""
+        filters = {
+            "municipality_key": municipality,
+            "kind": kind,
+            "status": status,
+        }
+        return {
+            "items": repo.list_articles(conn, **filters, limit=limit, offset=offset),
+            "total": repo.count_articles(conn, **filters),
+            "limit": limit,
+            "offset": offset,
+        }
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard() -> str:

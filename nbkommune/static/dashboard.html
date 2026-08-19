@@ -22,7 +22,7 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--background); color: var(--foreground); }
-    button, input { font: inherit; }
+    button, input, select { font: inherit; }
     .shell { width: min(1440px, 100%); margin: 0 auto; padding: 2rem; }
     header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
     h1 { margin: 0; font-size: 1.35rem; letter-spacing: -.025em; }
@@ -62,6 +62,18 @@
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .error-message { margin-top: .2rem; color: var(--muted-fg); font-size: .74rem; overflow-wrap: anywhere; }
     .empty { color: var(--muted-fg); font-size: .82rem; padding: .5rem 0; }
+    .article-section { margin-top: 1rem; }
+    .article-title { max-width: 34rem; white-space: normal; line-height: 1.35; }
+    .article-title a { color: inherit; text-decoration: none; }
+    .article-title a:hover { text-decoration: underline; }
+    .badge.press { color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+    .filters { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+    select, .pager button { min-height: 2rem; padding: .35rem .6rem; color: var(--foreground); background: var(--background); border: 1px solid var(--border); border-radius: .5rem; }
+    select:focus, .pager button:focus { outline: 2px solid var(--ring); outline-offset: 1px; }
+    .pager { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1.1rem; border-top: 1px solid var(--border); }
+    .pager-actions { display: flex; gap: .4rem; }
+    .pager button { cursor: pointer; }
+    .pager button:disabled { opacity: .4; cursor: default; }
     @media (max-width: 1000px) { .stats { grid-template-columns: repeat(2, 1fr); } .columns { grid-template-columns: 1fr; } }
     @media (max-width: 640px) { .shell { padding: 1rem; } header { flex-direction: column; } .stats { grid-template-columns: 1fr 1fr; } .stat-value { font-size: 1.45rem; } }
     @media (prefers-color-scheme: dark) {
@@ -116,15 +128,53 @@
         </article>
       </aside>
     </section>
+
+    <section class="card article-section">
+      <div class="card-head">
+        <div><h2>Scrapede artikler</h2><p class="muted small" id="article-count">Henter artikler…</p></div>
+        <div class="filters" aria-label="Artikel-filtre">
+          <select id="article-kind" aria-label="Type">
+            <option value="">Alle typer</option>
+            <option value="nyhed">Nyheder</option>
+            <option value="pressemeddelelse">Pressemeddelelser</option>
+          </select>
+          <select id="article-status" aria-label="Status">
+            <option value="">Alle statusser</option>
+            <option value="ingested">Indlæst</option>
+            <option value="listed">Afventer</option>
+            <option value="gone">Fjernet</option>
+          </select>
+          <select id="article-municipality" aria-label="Kommune">
+            <option value="">Alle kommuner</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Titel</th><th>Kommune</th><th>Type</th><th>Status</th><th>Publiceret</th><th>Indlæst</th><th class="num">Ord</th></tr></thead>
+        <tbody id="article-rows"><tr><td colspan="7" class="empty">Henter artikler…</td></tr></tbody>
+      </table></div>
+      <div class="pager">
+        <span class="muted small" id="article-page">—</span>
+        <div class="pager-actions"><button id="article-prev" type="button">Forrige</button><button id="article-next" type="button">Næste</button></div>
+      </div>
+    </section>
   </main>
 
   <script>
     const $ = (id) => document.getElementById(id);
     const nf = new Intl.NumberFormat("da-DK");
     let timer;
+    const articleLimit = 25;
+    let articleOffset = 0;
+    let articleTotal = 0;
 
     function esc(value) {
       return String(value ?? "").replace(/[&<>'"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
+    }
+    function decodeEntities(value) {
+      const textarea = document.createElement("textarea");
+      textarea.innerHTML = String(value ?? "");
+      return textarea.value;
     }
     function relative(value) {
       if (!value) return "aldrig";
@@ -132,6 +182,15 @@
       const abs = Math.abs(seconds);
       const [amount, unit] = abs < 90 ? [seconds, "second"] : abs < 5400 ? [Math.round(seconds / 60), "minute"] : abs < 129600 ? [Math.round(seconds / 3600), "hour"] : [Math.round(seconds / 86400), "day"];
       return new Intl.RelativeTimeFormat("da", {numeric: "auto"}).format(amount, unit);
+    }
+    function date(value) {
+      return value ? new Intl.DateTimeFormat("da-DK", {dateStyle: "medium"}).format(new Date(value)) : "ukendt";
+    }
+    function safeUrl(value) {
+      try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+      } catch { return ""; }
     }
     function count(obj, key) { return Number(obj?.[key] || 0); }
     function taskRow(task, running = false) {
@@ -162,6 +221,12 @@
       $("status-text").textContent = data.state === "degraded" ? "Kræver opmærksomhed" : data.state === "working" ? "Worker kører" : "Driften er normal";
       $("updated-at").textContent = `Opdateret ${relative(data.generated_at)}`;
 
+      const municipalitySelect = $("article-municipality");
+      if (!municipalitySelect.dataset.ready) {
+        municipalitySelect.innerHTML += data.municipalities.map((row) => `<option value="${esc(row.key)}">${esc(row.name)}</option>`).join("");
+        municipalitySelect.dataset.ready = "true";
+      }
+
       $("municipality-rows").innerHTML = data.municipalities.map((row) => {
         const pct = row.articles ? Math.round(row.ingested / row.articles * 100) : 0;
         return `<tr><td><strong>${esc(row.name)}</strong><div class="muted small">${esc(row.key)}</div></td><td><span class="badge">${esc(row.channel || "ukendt")}</span></td><td>${relative(row.last_ok_at)}</td><td><div class="progress" title="${pct}%"><span style="width:${pct}%"></span></div><div class="muted small">${pct}%</div></td><td class="num">${nf.format(row.articles)}</td><td class="num">${row.thin ? `<span class="badge bad">${nf.format(row.thin)}</span>` : "0"}</td><td class="num">${row.undated ? `<span class="badge">${nf.format(row.undated)}</span>` : "0"}</td></tr>`;
@@ -181,11 +246,45 @@
       $("error-list").innerHTML = data.recent_errors.slice(0, 8).map((row) => `<div class="task"><span class="badge bad">${esc(row.phase)}</span><div class="task-main"><div class="truncate"><strong>${esc(row.municipality_key || "system")}</strong> · ${esc(row.error_type || "Fejl")}</div><div class="error-message">${esc(row.message)}</div></div><span class="muted small">${relative(row.created_at)}</span></div>`).join("") || `<div class="empty">Ingen registrerede fejl</div>`;
     }
 
+    function renderArticles(data) {
+      articleTotal = Number(data.total);
+      const first = articleTotal ? articleOffset + 1 : 0;
+      const last = Math.min(articleOffset + data.items.length, articleTotal);
+      $("article-count").textContent = `${nf.format(articleTotal)} artikler matcher filtrene`;
+      $("article-page").textContent = `Viser ${nf.format(first)}–${nf.format(last)} af ${nf.format(articleTotal)}`;
+      $("article-prev").disabled = articleOffset === 0;
+      $("article-next").disabled = articleOffset + articleLimit >= articleTotal;
+      $("article-rows").innerHTML = data.items.map((row) => {
+        const href = safeUrl(row.url);
+        const title = esc(decodeEntities(row.title || "Uden titel"));
+        const titleCell = href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${title} ↗</a>` : title;
+        const kind = row.kind === "pressemeddelelse" ? "Pressemeddelelse" : row.kind === "nyhed" ? "Nyhed" : row.kind || "Ukendt";
+        const status = row.status === "ingested" ? "Indlæst" : row.status === "listed" ? "Afventer" : row.status === "gone" ? "Fjernet" : row.status;
+        const statusClass = row.status === "ingested" ? "ok" : row.status === "gone" ? "bad" : "";
+        return `<tr><td class="article-title"><strong>${titleCell}</strong><div class="muted small">${esc(row.id)}</div></td><td>${esc(row.municipality_name)}</td><td><span class="badge ${row.kind === "pressemeddelelse" ? "press" : ""}">${esc(kind)}</span></td><td><span class="badge ${statusClass}">${esc(status)}</span></td><td>${date(row.published_at)}</td><td>${row.ingested_at ? relative(row.ingested_at) : "—"}</td><td class="num">${row.word_count == null ? "—" : nf.format(row.word_count)}</td></tr>`;
+      }).join("") || `<tr><td colspan="7" class="empty">Ingen artikler matcher filtrene</td></tr>`;
+    }
+
+    async function refreshArticles() {
+      const params = new URLSearchParams({limit: articleLimit, offset: articleOffset});
+      const filters = {kind: $("article-kind").value, status: $("article-status").value, municipality: $("article-municipality").value};
+      Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+      try {
+        const response = await fetch(`/api/articles?${params}`, {cache: "no-store"});
+        if (!response.ok) throw new Error(`API-fejl ${response.status}`);
+        renderArticles(await response.json());
+      } catch (error) {
+        $("article-count").textContent = `Kunne ikke hente artikler: ${error.message}`;
+        $("article-rows").innerHTML = `<tr><td colspan="7" class="empty">Artikelvisningen kunne ikke indlæses</td></tr>`;
+      }
+    }
+
     async function refresh() {
       try {
         const response = await fetch("/api/status", {cache: "no-store"});
         if (!response.ok) throw new Error(`API-fejl ${response.status}`);
         render(await response.json());
+        refreshArticles();
         clearTimeout(timer);
         timer = setTimeout(refresh, 10_000);
       } catch (error) {
@@ -195,6 +294,9 @@
         timer = setTimeout(refresh, 15_000);
       }
     }
+    ["article-kind", "article-status", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
+    $("article-prev").addEventListener("click", () => { articleOffset = Math.max(0, articleOffset - articleLimit); refreshArticles(); });
+    $("article-next").addEventListener("click", () => { if (articleOffset + articleLimit < articleTotal) articleOffset += articleLimit; refreshArticles(); });
     refresh();
   </script>
 </body>
