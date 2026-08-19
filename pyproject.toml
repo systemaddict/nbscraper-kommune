@@ -23,8 +23,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# 5 of the 98 sites render their news list client-side (Tårnby, Hvidovre,
-# Middelfart, Skive, Thisted). They need a real browser; everything else does not.
+# Optional browser support for diagnosing a client-rendered site when neither
+# its feed nor sitemap exposes the relevant URLs. Production currently covers
+# all 98 targets without Playwright.
 browser = [
     "playwright>=1.47",
 ]

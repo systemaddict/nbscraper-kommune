@@ -52,7 +52,8 @@ class TestFormats:
         assert iso_date(parse_danish_datetime("2026-08-18")) == date(2026, 8, 17)
 
     @pytest.mark.parametrize("raw", ["", None, "ingen dato her", "31. februar 2026",
-                                     "42. august 2026"])
+                                     "42. august 2026",
+                                     "Mon, 01 Jan 0001 00:00:00 +0000"])
     def test_unparseable_returns_none(self, raw):
         assert parse_danish_datetime(raw) is None
 

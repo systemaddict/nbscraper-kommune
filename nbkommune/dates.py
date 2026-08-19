@@ -101,9 +101,16 @@ def _build(year: int, month: int, day: int,
             year, month, day,
             int(hh) if hh else 0, int(mm) if mm else 0, int(ss) if ss else 0,
         )
-    except ValueError:
+    except (ValueError, OverflowError):
         return None    # 31 February and friends — a real value on broken sites
-    return _to_utc(naive)
+    try:
+        return _to_utc(naive)
+    except (ValueError, OverflowError):
+        # A timezone conversion can cross datetime's supported boundary. One
+        # live RSS feed uses year 0001 as an "unknown" sentinel; Copenhagen's
+        # historical UTC offset then moves it into year 0. It is unknown, not a
+        # reason to abort discovery for every otherwise-valid feed entry.
+        return None
 
 
 def parse_danish_datetime(value: str | None) -> str | None:
@@ -126,7 +133,7 @@ def parse_danish_datetime(value: str | None) -> str | None:
         return _to_utc(datetime.fromisoformat(
             _normalise_dotted(raw).replace("Z", "+00:00")
         ))
-    except ValueError:
+    except (ValueError, OverflowError):
         pass
 
     # 2. ISO-shaped but not ISO-legal (period time separator, stray suffix).

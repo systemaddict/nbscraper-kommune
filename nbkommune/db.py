@@ -28,7 +28,7 @@ from nbkommune.settings import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 _NAMED_PLACEHOLDER = re.compile(r"%\((\w+)\)s")
-_TIMESTAMP_COLUMN = re.compile(r"(?:^|_)(?:at|time|date|after)$")
+_TIMESTAMP_COLUMN = re.compile(r"(?:^latest$|(?:^|_)(?:at|time|date|after)$)")
 
 
 class DatabaseError(RuntimeError):

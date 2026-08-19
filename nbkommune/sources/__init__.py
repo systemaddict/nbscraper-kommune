@@ -70,7 +70,8 @@ def make_source(target: Target, http: HttpClient, *,
     if channel == "sitemap":
         sitemap_url = config.get("sitemap_url") or (
             (target.site_url or "").rstrip("/") + "/sitemap.xml")
-        return SitemapSource(target, http, sitemap_url, config.get("url_prefix"))
+        prefix = config.get("url_prefixes") or config.get("url_prefix")
+        return SitemapSource(target, http, sitemap_url, prefix)
 
     if channel == "listing":
         return ListingSource(target, http, urls=config.get("listing_urls") or None)
@@ -144,8 +145,8 @@ def resolve_source(target: Target, http: HttpClient) -> Source:
     if target.site_url and may_probe:
         sitemap_url = probe_sitemap_url(http, target.site_url)
         if sitemap_url:
-            candidate = SitemapSource(target, http, sitemap_url,
-                                      target.config.get("url_prefix"))
+            prefix = target.config.get("url_prefixes") or target.config.get("url_prefix")
+            candidate = SitemapSource(target, http, sitemap_url, prefix)
             try:
                 found = candidate.list_articles()
             except Exception as exc:

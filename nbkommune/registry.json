@@ -665,14 +665,18 @@
     "site_url": "https://www.hvidovre.dk",
     "news_url": "https://www.hvidovre.dk/om-kommunen/nyheder",
     "press_url": "https://www.hvidovre.dk/om-kommunen/presse/pressemeddelelser",
-    "channel": "auto",
+    "channel": "sitemap",
     "source_type": "separat",
-    "enabled": false,
+    "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/nyheder"
+      "sitemap_url": "https://www.hvidovre.dk/Handlers/Sitemap.ashx",
+      "url_prefixes": [
+        "/om-kommunen/nyheder",
+        "/om-kommunen/presse/pressemeddelelser"
+      ]
     },
-    "note": "To separate sider, begge verificeret aktive. JS-krævet — begge sider returnerer tom body uden rendering. [DISABLED: needs browser rendering]"
+    "note": "To separate sider, begge dækket af kommunens sitemap."
   },
   {
     "key": "ikast-brande",
@@ -905,14 +909,15 @@
     "site_url": "https://middelfart.dk",
     "news_url": "https://middelfart.dk/nyheder",
     "press_url": "https://middelfart.dk/nyheder",
-    "channel": "auto",
+    "channel": "sitemap",
     "source_type": "faelles",
-    "enabled": false,
+    "enabled": true,
     "verified": true,
     "config": {
+      "sitemap_url": "https://middelfart.dk/Handlers/Sitemap.ashx",
       "url_prefix": "/nyheder"
     },
-    "note": "Fælles nyhedsside med emnefilter Pressemeddelelse; gammel dedikeret sti nedlagt (404). JS-krævet — tom body uden rendering. [DISABLED: needs browser rendering]"
+    "note": "Fælles nyhedsside med emnefilter Pressemeddelelse; dækket af kommunens sitemap."
   },
   {
     "key": "morsoe",
@@ -1190,14 +1195,15 @@
     "site_url": "https://skive.dk",
     "news_url": "https://skive.dk/nyheder/",
     "press_url": "",
-    "channel": "auto",
+    "channel": "sitemap",
     "source_type": "kun_nyheder",
-    "enabled": false,
+    "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "sitemap_url": "https://skive.dk/sitemap.xml",
+      "url_prefix": "/news"
     },
-    "note": "Ingen separat pressemeddelelses-side fundet; kun generel nyhedsside. JS-krævet — siden leverer 14 tegn; alt indhold er klientside. [DISABLED: needs browser rendering]"
+    "note": "Ingen separat pressemeddelelses-side fundet; artikler dækkes af sitemap under /news."
   },
   {
     "key": "slagelse",
@@ -1325,14 +1331,15 @@
     "site_url": "https://www.taarnby.dk",
     "news_url": "https://www.taarnby.dk/nyheder",
     "press_url": "",
-    "channel": "auto",
+    "channel": "sitemap",
     "source_type": "kun_nyheder",
-    "enabled": false,
+    "enabled": true,
     "verified": true,
     "config": {
+      "sitemap_url": "https://www.taarnby.dk/sitemap.xml",
       "url_prefix": "/nyheder"
     },
-    "note": "Ingen dedikeret pressemeddelelses-side; kun pressekontaktside uden arkiv. JS-krævet — sidens indhold hentes klientside; kun cookiebanner uden rendering. [DISABLED: needs browser rendering]"
+    "note": "Ingen dedikeret pressemeddelelses-side; nyheder dækkes af kommunens sitemap."
   },
   {
     "key": "thisted",
@@ -1340,14 +1347,15 @@
     "site_url": "https://www.thisted.dk",
     "news_url": "https://www.thisted.dk/nyheder",
     "press_url": "https://www.thisted.dk/nyheder",
-    "channel": "auto",
+    "channel": "sitemap",
     "source_type": "faelles",
-    "enabled": false,
+    "enabled": true,
     "verified": true,
     "config": {
+      "sitemap_url": "https://www.thisted.dk/Handlers/Sitemap.ashx",
       "url_prefix": "/nyheder"
     },
-    "note": "Fælles side; presse-siden oplyser at pressemeddelelser udgives som nyheder. JS-krævet — tom body selv med rendering. [DISABLED: needs browser rendering]"
+    "note": "Fælles side; pressemeddelelser udgives som nyheder og dækkes af kommunens sitemap."
   },
   {
     "key": "toender",

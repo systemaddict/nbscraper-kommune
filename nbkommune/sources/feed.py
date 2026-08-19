@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import feedparser
 
@@ -37,6 +37,10 @@ class FeedSource:
         self.target = target
         self.http = http
         self.feed_url = feed_url
+        # Conventional `/rss` endpoints are often site-wide. Honour the same
+        # curated prefix used for sitemaps so a municipality's news scraper does
+        # not ingest its entire website.
+        self.url_prefix = (target.config.get("url_prefix") or "").rstrip("/")
 
     @property
     def detail(self) -> str:
@@ -46,6 +50,12 @@ class FeedSource:
     def resolved_config(self) -> dict:
         """Everything needed to rebuild this source without probing again."""
         return {"feed_url": self.feed_url}
+
+    def _matches(self, url: str) -> bool:
+        if not self.url_prefix:
+            return True
+        path = urlparse(url).path.rstrip("/")
+        return path.lower().startswith(self.url_prefix.lower() + "/")
 
     def list_articles(self) -> list[ListedArticle]:
         content, _ = self.http.get_bytes(self.feed_url)
@@ -63,7 +73,7 @@ class FeedSource:
             if not link:
                 continue
             url = urljoin(self.feed_url, link)
-            if looks_like_document(url, entry.get("title")):
+            if not self._matches(url) or looks_like_document(url, entry.get("title")):
                 # A Drupal news feed happily lists PDFs and postlists alongside
                 # articles; ingesting those stores a filename with no body.
                 logger.debug("%s: skipping document entry %s", self.target.key, url)

@@ -67,6 +67,21 @@ class TestFeedSource:
         assert "https://testby.dk/media/budget.pdf" not in urls
         assert "https://testby.dk/da/node/9" not in urls
 
+    @respx.mock
+    def test_sitewide_feed_is_limited_to_configured_news_prefix(self):
+        rss = """<?xml version="1.0"?><rss version="2.0"><channel>
+        <title>Hele sitet</title>
+        <item><title>Nyhed</title><link>https://testby.dk/nyheder/rigtig-nyhed</link>
+          <pubDate>Mon, 17 Aug 2026 14:46:00 +0200</pubDate></item>
+        <item><title>Gammel infoside</title><link>https://testby.dk/borger/infoside</link>
+          <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate></item>
+        </channel></rss>"""
+        respx.get("https://testby.dk/rss").mock(return_value=httpx.Response(200, text=rss))
+        target = _target(config={"url_prefix": "/nyheder"})
+        with HttpClient(_settings()) as http:
+            found = FeedSource(target, http, "https://testby.dk/rss").list_articles()
+        assert [article.title for article in found] == ["Nyhed"]
+
 
 # ── sitemap ──────────────────────────────────────────────────────────────────
 SITEMAP = """<?xml version="1.0" encoding="UTF-8"?>
@@ -115,6 +130,23 @@ class TestSitemapSource:
         first = next(a for a in found if a.url.endswith("foerste-nyhed"))
         assert first.updated_at == "2026-08-18T08:00:00+00:00"
         assert first.published_at is None
+
+    @respx.mock
+    def test_multiple_prefixes_cover_news_and_press_releases(self):
+        sitemap = SITEMAP.replace(
+            "https://testby.dk/borger/affald",
+            "https://testby.dk/presse/foerste-pressemeddelelse",
+        )
+        respx.get("https://testby.dk/sitemap.xml").mock(
+            return_value=httpx.Response(200, text=sitemap))
+        with HttpClient(_settings()) as http:
+            found = SitemapSource(
+                _target(), http, "https://testby.dk/sitemap.xml",
+                ["/nyheder", "/presse"],
+            ).list_articles()
+        urls = [article.url for article in found]
+        assert "https://testby.dk/nyheder/foerste-nyhed" in urls
+        assert "https://testby.dk/presse/foerste-pressemeddelelse" in urls
 
     @respx.mock
     def test_follows_a_sitemap_index_news_child_first(self):

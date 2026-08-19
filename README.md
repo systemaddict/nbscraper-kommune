@@ -252,9 +252,9 @@ cached). Use `nbk reresolve <key>` when a site changes.
 
 ## Known gaps
 
-- **5 sites render their news list client-side** (Tårnby, Hvidovre, Middelfart,
-  Skive, Thisted) and ship `enabled: false`. They need the `browser` extra and a
-  Playwright-backed channel, which is not written yet.
+- **All 98 kommuner are enabled.** Tårnby, Hvidovre, Middelfart, Skive and
+  Thisted render their visible lists client-side, but their official sitemaps
+  provide stable discovery without paying for browser rendering on every pass.
 - **3 sites are flagged `verified: false`** in the registry (Esbjerg, Ringsted,
   Skanderborg) — the URL survey could not confirm their press archive. They still
   crawl; the flag records that the source is shaky.

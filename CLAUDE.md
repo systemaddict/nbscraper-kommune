@@ -62,9 +62,10 @@ These were established by probing the real sites. Do not "simplify" them away.
 7. **News feeds list non-articles.** Fredericia's Drupal RSS publishes
    `Budgetprocedure 2027-2030.pdf` and weekly postlists as entries. Hence
    `looks_like_document`.
-8. **5 of 98 sites render their news list client-side** (Tårnby, Hvidovre,
-   Middelfart, Skive, Thisted). They ship `enabled: false` — the HTTP channels
-   cannot see their content at all. They need the `browser` extra.
+8. **5 of 98 sites render their visible news list client-side** (Tårnby,
+   Hvidovre, Middelfart, Skive, Thisted). Their official sitemaps expose the
+   article URLs, so they use an explicit `sitemap` channel rather than paying
+   for browser rendering on every discovery pass.
 
 ## Workflow rules
 

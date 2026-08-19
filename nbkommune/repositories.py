@@ -520,7 +520,7 @@ def retry_task(conn: Connection, task_id: int) -> dict | None:
     """Put a dead task back in the queue with a fresh attempt budget. Commits."""
     row = conn.execute(
         "UPDATE scrape_task SET status = 'queued', attempts = 0, run_after = %s, "
-        "finished_at = NULL, lease_expires_at = NULL "
+        "finished_at = NULL, lease_expires_at = NULL, last_error = NULL "
         "WHERE id = %s AND status IN ('dead', 'queued') RETURNING *",
         (now_iso(), task_id),
     ).fetchone()

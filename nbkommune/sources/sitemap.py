@@ -50,25 +50,37 @@ class SitemapSource:
     channel = "sitemap"
 
     def __init__(self, target: Target, http: HttpClient, sitemap_url: str,
-                 url_prefix: str | None = None) -> None:
+                 url_prefix: str | list[str] | None = None) -> None:
         self.target = target
         self.http = http
         self.sitemap_url = sitemap_url
         # Fall back to the news path from the registry; without any prefix we
         # would treat every page on the site as an article.
-        self.url_prefix = (url_prefix
-                           or target.config.get("url_prefix")
-                           or urlparse(target.news_url or target.press_url or "").path
-                           or "")
+        configured = (url_prefix
+                      or target.config.get("url_prefixes")
+                      or target.config.get("url_prefix")
+                      or urlparse(target.news_url or target.press_url or "").path
+                      or "")
+        values = [configured] if isinstance(configured, str) else list(configured)
+        self.url_prefixes = [value.rstrip("/") for value in values if value]
+        # Kept as a convenience for logs and callers written before multiple
+        # prefixes were supported.
+        self.url_prefix = self.url_prefixes[0] if self.url_prefixes else ""
 
     @property
     def detail(self) -> str:
-        return f"{self.sitemap_url} (prefix={self.url_prefix or '/'})"
+        prefixes = ",".join(self.url_prefixes) or "/"
+        return f"{self.sitemap_url} (prefix={prefixes})"
 
     @property
     def resolved_config(self) -> dict:
         """Everything needed to rebuild this source without probing again."""
-        return {"sitemap_url": self.sitemap_url, "url_prefix": self.url_prefix}
+        config: dict = {"sitemap_url": self.sitemap_url}
+        if len(self.url_prefixes) > 1:
+            config["url_prefixes"] = self.url_prefixes
+        else:
+            config["url_prefix"] = self.url_prefix
+        return config
 
     def _parse(self, content: bytes) -> ElementTree.Element | None:
         try:
@@ -96,13 +108,12 @@ class SitemapSource:
         return out
 
     def _matches(self, url: str) -> bool:
-        if not self.url_prefix:
+        if not self.url_prefixes:
             return True
-        path = urlparse(url).path
-        if not path.lower().startswith(self.url_prefix.lower()):
-            return False
-        # The section index itself is not an article.
-        return path.rstrip("/").lower() != self.url_prefix.rstrip("/").lower()
+        path = urlparse(url).path.rstrip("/").lower()
+        # A prefix matches complete path segments only, and the section index
+        # itself is not an article.
+        return any(path.startswith(prefix.lower() + "/") for prefix in self.url_prefixes)
 
     def list_articles(self) -> list[ListedArticle]:
         content, _ = self.http.get_bytes(self.sitemap_url)

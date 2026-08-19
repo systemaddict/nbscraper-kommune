@@ -56,6 +56,49 @@ def test_sqlite_rollback_preserves_caller_controlled_transaction():
     conn.close()
 
 
+def test_aggregate_latest_timestamp_is_decoded():
+    conn = db.SQLiteConnection(":memory:")
+    db.init_schema(conn)
+    repo.record_error(
+        conn,
+        phase="detail",
+        municipality_key="test",
+        exc=ValueError("broken page"),
+    )
+
+    summary = repo.error_summary(conn, hours=1)
+    assert isinstance(summary[0]["latest"], datetime)
+    conn.close()
+
+
+def test_retry_task_clears_previous_failure():
+    conn = db.SQLiteConnection(":memory:")
+    db.init_schema(conn)
+    repo.upsert_municipality(conn, _target())
+    task_id = repo.enqueue_task(
+        conn,
+        kind="ingest",
+        municipality_key="test",
+        article_id="article-1",
+        reason="new",
+        priority=repo.PRIORITY_NEW,
+        max_attempts=1,
+    )
+    conn.commit()
+    task = repo.pop_due_task(conn)
+    assert task is not None
+    assert repo.fail_task(
+        conn, task, "old failure", backoff_base_s=1, backoff_max_s=1
+    ) == "dead"
+
+    retried = repo.retry_task(conn, task_id)
+    assert retried is not None
+    assert retried["status"] == "queued"
+    assert retried["attempts"] == 0
+    assert retried["last_error"] is None
+    conn.close()
+
+
 def test_bunny_connection_uses_closed_reads_and_baton_writes():
     payloads: list[dict] = []
 

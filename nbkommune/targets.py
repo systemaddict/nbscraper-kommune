@@ -53,7 +53,7 @@ class Target:
     channel: str = "auto"          # auto | feed | sitemap | listing
     source_type: str = "faelles"
     enabled: bool = True
-    # Channel config. `feed_url` for feed; `url_prefix` (+ optional
+    # Channel config. `feed_url` for feed; `url_prefix`/`url_prefixes` (+ optional
     # `sitemap_url`) for sitemap; `item_selector` / `link_selector` and optional
     # `date_selector` / `body_selector` for listing. Kept as a loose dict so a
     # site can be fixed in config/targets.json without a schema migration.
