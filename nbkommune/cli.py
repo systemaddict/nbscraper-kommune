@@ -220,7 +220,7 @@ def serve(
     port: int = typer.Option(8000, min=1, max=65535, help="HTTP port."),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
-    """Serve the read-only status API and dashboard."""
+    """Serve the authenticated status API and dashboard."""
     _setup_logging(verbose)
     try:
         import uvicorn
@@ -229,9 +229,25 @@ def serve(
             'status server dependencies are missing; install with pip install -e ".[api]"'
         ) from exc
 
+    settings = get_settings()
+    if settings.auth_enabled:
+        from nbkommune.serve import run_protected_server
+
+        try:
+            exit_code = run_protected_server(
+                settings, host=host, port=port, verbose=verbose
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        if exit_code:
+            raise typer.Exit(exit_code)
+        return
+
     from nbkommune.api import create_app
 
-    uvicorn.run(create_app(), host=host, port=port, log_level="debug" if verbose else "info")
+    uvicorn.run(
+        create_app(settings), host=host, port=port, log_level="debug" if verbose else "info"
+    )
 
 
 @app.command("stats")

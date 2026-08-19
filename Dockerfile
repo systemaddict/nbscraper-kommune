@@ -1,3 +1,12 @@
+FROM node:24-slim AS auth-build
+
+WORKDIR /build/auth
+COPY auth/package.json auth/package-lock.json ./
+RUN npm ci
+COPY auth/tsconfig.json ./
+COPY auth/src ./src
+RUN npm run build && npm prune --omit=dev
+
 FROM python:3.12-slim
 
 # lxml needs no build deps on slim for manylinux wheels, but curl is handy for
@@ -7,6 +16,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# The dashboard container runs a tiny Better Auth/Hono gateway in front of the
+# existing FastAPI process. Both official images use Debian slim, so the Node
+# runtime and the installed JS dependencies can be copied without another
+# package repository in the final image.
+COPY --from=auth-build /usr/local/bin/node /usr/local/bin/node
+COPY --from=auth-build /build/auth/package.json ./auth/package.json
+COPY --from=auth-build /build/auth/node_modules ./auth/node_modules
+COPY --from=auth-build /build/auth/dist ./auth/dist
+COPY auth/static ./auth/static
 
 # Dependencies first so a code change does not invalidate the wheel cache.
 COPY pyproject.toml README.md ./

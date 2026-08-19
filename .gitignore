@@ -12,3 +12,5 @@ config/targets.json
 temp/
 output/
 .DS_Store
+auth/node_modules/
+auth/dist/

@@ -91,7 +91,11 @@ nbkommune/
   db.py            Bunny libSQL/HTTP adapter + schema (idempotent)
   api.py           Read-only status API; serves the dashboard from the same process
   static/          Dependency-free, shadcn-inspired operational dashboard
+  serve.py         Supervises FastAPI behind the Better Auth gateway
   cli.py           The nbk CLI
+auth/
+  src/             Better Auth + Hono gateway backed by Bunny Database/libSQL
+  static/          Login page
 scripts/
   build_registry.py  Regenerate registry.json from the survey CSV
   probe_sites.py     Survey every site: channel, dates, extraction health
@@ -115,7 +119,7 @@ nbk crawl --now                    # discovery inline
 nbk crawl                          # or: queue discovery for the worker
 nbk worker                         # the service: pops and executes tasks
 nbk worker --once --max-tasks 20   # drain what is due, then exit
-nbk serve                          # read-only status API + dashboard on :8000
+nbk serve                          # authenticated status API + dashboard on :8000
 nbk stats                          # per-kommune corpus + extraction health
 nbk queue / nbk errors             # what is pending, what is failing
 nbk backfill aarhus --limit 200    # ingest the still-listed backlog
@@ -144,9 +148,24 @@ BUNNY_DATABASE_URL
 BUNNY_DATABASE_AUTH_TOKEN
 ```
 
-`/healthz`, the dashboard HTML, and the read-only `/api/status` snapshot are
-public. The dashboard container has a separate read-only Bunny Database token;
-password protection can be added later without changing the worker.
+The dashboard uses Better Auth email/password sessions stored in the same Bunny
+Database. Only `/healthz`, `/login`, and Better Auth's `/api/auth/*` handler are
+public. `/`, `/api/status`, and `/api/articles` require a valid session. Public
+signup is disabled; the first user is created from deployment-only bootstrap
+credentials.
+
+Set these variables on the dashboard container (not the worker):
+
+```text
+NBK_AUTH_ENABLED=true
+NBK_AUTH_BASE_URL=https://your-dashboard.example.com
+NBK_AUTH_SECRET=<at least 32 random characters>
+NBK_AUTH_BOOTSTRAP_EMAIL=<initial login email>
+NBK_AUTH_BOOTSTRAP_PASSWORD=<initial password, at least 8 characters>
+```
+
+After the first successful login, the two `NBK_AUTH_BOOTSTRAP_*` values can be
+removed. Existing users and sessions remain in Bunny Database.
 
 Create and link a database with Bunny's CLI, or attach an existing database from
 its **Access > Add Secrets to Magic Container App** screen:

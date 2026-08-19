@@ -13,4 +13,6 @@ __pycache__
 config/targets.json
 output
 temp
+auth/node_modules
+auth/dist
 tests

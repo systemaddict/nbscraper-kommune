@@ -2,8 +2,9 @@
 
 The worker remains the only process that mutates queue state. This module opens
 one short-lived database connection per request and exposes a single compact
-snapshot for the dashboard to poll. ``/healthz`` and the HTML shell are public;
-the snapshot is public too while the dashboard is an internal operational aid.
+snapshot for the dashboard to poll. In production this server only binds to
+loopback; the Better Auth gateway owns the public port and protects every route
+except ``/healthz``.
 """
 from __future__ import annotations
 

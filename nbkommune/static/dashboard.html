@@ -31,6 +31,9 @@
     .muted { color: var(--muted-fg); }
     .small { font-size: .8rem; }
     .status { display: inline-flex; align-items: center; gap: .5rem; padding: .42rem .7rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: .8rem; }
+    .header-actions { display: flex; align-items: center; gap: .6rem; }
+    .signout { min-height: 2rem; padding: .35rem .65rem; color: var(--muted-fg); background: var(--card); border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; }
+    .signout:hover { color: var(--foreground); }
     .dot { width: .5rem; height: .5rem; border-radius: 999px; background: var(--ring); }
     .dot.healthy, .dot.working { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent); }
     .dot.degraded { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent); }
@@ -88,7 +91,11 @@
         <h1>Kommune scraper</h1>
         <p class="muted small">Nyheder og pressemeddelelser · driftsstatus</p>
       </div>
-      <div class="status"><span id="status-dot" class="dot"></span><span id="status-text">Forbinder…</span></div>
+      <div class="header-actions">
+        <span id="user-email" class="muted small"></span>
+        <div class="status"><span id="status-dot" class="dot"></span><span id="status-text">Forbinder…</span></div>
+        <button id="signout" class="signout" type="button">Log ud</button>
+      </div>
     </header>
 
     <section class="grid stats" aria-label="Nøgletal">
@@ -282,6 +289,7 @@
     async function refresh() {
       try {
         const response = await fetch("/api/status", {cache: "no-store"});
+        if (response.status === 401) return location.assign("/login");
         if (!response.ok) throw new Error(`API-fejl ${response.status}`);
         render(await response.json());
         refreshArticles();
@@ -297,6 +305,13 @@
     ["article-kind", "article-status", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
     $("article-prev").addEventListener("click", () => { articleOffset = Math.max(0, articleOffset - articleLimit); refreshArticles(); });
     $("article-next").addEventListener("click", () => { if (articleOffset + articleLimit < articleTotal) articleOffset += articleLimit; refreshArticles(); });
+    $("signout").addEventListener("click", async () => {
+      await fetch("/api/auth/sign-out", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"});
+      location.assign("/login");
+    });
+    fetch("/api/auth/get-session", {cache: "no-store"})
+      .then((response) => response.json())
+      .then((session) => { $("user-email").textContent = session?.user?.email || ""; });
     refresh();
   </script>
 </body>

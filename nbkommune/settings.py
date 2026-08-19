@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -157,6 +157,21 @@ class Settings(BaseSettings):
     # cold regional replica can take longer than an ordinary local query.
     database_timeout_s: float = Field(default=30.0)
 
+    # ── Dashboard authentication ───────────────────────────────
+    # Enabled by default so a newly deployed dashboard fails closed. The worker
+    # ignores these settings, and local diagnostics can explicitly opt out.
+    auth_enabled: bool = Field(default=True)
+    # Public origin used for Better Auth's origin checks and secure cookies.
+    auth_base_url: str = Field(default="")
+    # High-entropy signing key; SecretStr keeps it out of settings repr/logs.
+    auth_secret: SecretStr = Field(default=SecretStr(""))
+    # Used exactly once when the auth tables contain no users. Signup remains
+    # disabled on the public handler, so these are deployment-only credentials.
+    auth_bootstrap_email: str = Field(default="")
+    auth_bootstrap_password: SecretStr = Field(default=SecretStr(""))
+    # Loopback port for FastAPI behind the public Better Auth gateway.
+    auth_internal_port: int = Field(default=8001, ge=1, le=65535)
+
     # ── Scheduling / queue ──────────────────────────────────────
     # How often each target is re-discovered. News moves slower than an agenda
     # portal and 98 sites × 24/day is already plenty of traffic.
@@ -194,6 +209,20 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [p.strip() for p in v.split(",") if p.strip()]
         return v
+
+    def validate_auth(self) -> None:
+        """Fail before binding a public port when auth configuration is unsafe."""
+        if not self.auth_base_url.startswith(("http://", "https://")):
+            raise ValueError("NBK_AUTH_BASE_URL must be an absolute http(s) URL")
+        if len(self.auth_secret.get_secret_value()) < 32:
+            raise ValueError("NBK_AUTH_SECRET must be at least 32 characters")
+        password = self.auth_bootstrap_password.get_secret_value()
+        if bool(self.auth_bootstrap_email) != bool(password):
+            raise ValueError(
+                "NBK_AUTH_BOOTSTRAP_EMAIL and NBK_AUTH_BOOTSTRAP_PASSWORD must be set together"
+            )
+        if password and len(password) < 8:
+            raise ValueError("NBK_AUTH_BOOTSTRAP_PASSWORD must be at least 8 characters")
 
 
 @lru_cache(maxsize=1)
