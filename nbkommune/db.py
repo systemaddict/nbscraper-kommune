@@ -169,11 +169,16 @@ class BunnyConnection:
         return value.get("value")
 
     def _statement(self, sql: str, params: Any) -> dict[str, Any]:
-        stmt: dict[str, Any] = {"sql": _translate_sql(sql)}
+        translated = _translate_sql(sql)
+        stmt: dict[str, Any] = {"sql": translated}
         if isinstance(params, Mapping):
+            # psycopg tolerated unused mapping keys; Hrana rejects them. A few
+            # repository queries build one parameter mapping for optional WHERE
+            # clauses, so only transmit names that occur in the final SQL.
+            used_names = set(re.findall(r"[:@$](\w+)", translated))
             stmt["named_args"] = [
                 {"name": key, "value": self._encode(value)}
-                for key, value in params.items()
+                for key, value in params.items() if key in used_names
             ]
         elif params is not None:
             stmt["args"] = [self._encode(value) for value in params]

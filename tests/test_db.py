@@ -143,3 +143,39 @@ def test_bunny_connection_uses_closed_reads_and_baton_writes():
     assert write_stmt["sql"] == "INSERT INTO item (id, enabled) VALUES (:id, :enabled)"
     assert write_stmt["named_args"][1]["value"] == {"type": "integer", "value": "1"}
     assert payloads[2]["baton"] == "write-baton"
+
+
+def test_bunny_connection_omits_unused_named_arguments():
+    payloads: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payloads.append(json.loads(request.content))
+        return httpx.Response(200, json={
+            "baton": None,
+            "base_url": None,
+            "results": [
+                {
+                    "type": "ok",
+                    "response": {
+                        "type": "execute",
+                        "result": {"cols": [], "rows": [], "affected_row_count": 0},
+                    },
+                },
+                {"type": "ok", "response": {"type": "close"}},
+            ],
+        })
+
+    conn = db.BunnyConnection(
+        "libsql://database.example/",
+        "secret",
+        transport=httpx.MockTransport(handler),
+    )
+    conn.execute(
+        "SELECT * FROM item ORDER BY id LIMIT %(limit)s",
+        {"municipality_key": None, "limit": 10},
+    )
+    conn.close()
+
+    assert payloads[0]["requests"][0]["stmt"]["named_args"] == [
+        {"name": "limit", "value": {"type": "integer", "value": "10"}}
+    ]
