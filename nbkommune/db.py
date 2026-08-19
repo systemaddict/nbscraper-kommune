@@ -343,6 +343,41 @@ def _table_statements() -> list[str]:
         "CREATE INDEX IF NOT EXISTS ix_article_canonical "
         "ON article(municipality_key, canonical_url)",
         """
+        CREATE VIRTUAL TABLE IF NOT EXISTS article_fts USING fts5(
+            title,
+            summary,
+            body_text,
+            content = 'article',
+            content_rowid = 'rowid',
+            tokenize = 'unicode61 remove_diacritics 2'
+        )
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS article_fts_insert AFTER INSERT ON article BEGIN
+            INSERT INTO article_fts(rowid, title, summary, body_text)
+            VALUES (new.rowid, new.title, new.summary, new.body_text);
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS article_fts_delete AFTER DELETE ON article BEGIN
+            INSERT INTO article_fts(article_fts, rowid, title, summary, body_text)
+            VALUES ('delete', old.rowid, old.title, old.summary, old.body_text);
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS article_fts_update
+        AFTER UPDATE OF title, summary, body_text ON article
+        WHEN old.title IS NOT new.title
+          OR old.summary IS NOT new.summary
+          OR old.body_text IS NOT new.body_text
+        BEGIN
+            INSERT INTO article_fts(article_fts, rowid, title, summary, body_text)
+            VALUES ('delete', old.rowid, old.title, old.summary, old.body_text);
+            INSERT INTO article_fts(rowid, title, summary, body_text)
+            VALUES (new.rowid, new.title, new.summary, new.body_text);
+        END
+        """,
+        """
         CREATE TABLE IF NOT EXISTS scrape_task (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             kind             TEXT NOT NULL,
@@ -416,6 +451,20 @@ def init_schema(conn: Connection, settings: Settings | None = None) -> None:
     del settings  # retained for a stable public signature
     for statement in _table_statements():
         conn.execute(statement)
+        conn.commit()
+    # Creating an external-content FTS table does not index pre-existing rows.
+    # Rebuild once when this migration first reaches a database; the triggers
+    # above keep every later insert/update/delete in sync without application
+    # code having to remember a second write.
+    marker = conn.execute(
+        "SELECT value FROM meta WHERE key = %s", ("schema:article_fts:v1",)
+    ).fetchone()
+    if marker is None:
+        conn.execute("INSERT INTO article_fts(article_fts) VALUES ('rebuild')")
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (%s, %s)",
+            ("schema:article_fts:v1", "complete"),
+        )
         conn.commit()
     logger.info("Bunny/SQLite schema ready")
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -271,51 +272,91 @@ def touch_article_checked(conn: Connection, municipality_key: str,
     )
 
 
+_SEARCH_TERM = re.compile(r"[^\W_]+", re.UNICODE)
+
+
+def _fts_query(value: str) -> str:
+    """Turn plain user text into a safe prefix query for FTS5.
+
+    Dashboard search is deliberately not an FTS query-language endpoint. That
+    avoids syntax errors from punctuation and prevents operators such as NEAR
+    or column filters from changing the meaning of an ordinary search box.
+    Prefix matching makes Danish compounds and partially typed words useful.
+    """
+    terms = _SEARCH_TERM.findall(value.casefold())[:12]
+    return " AND ".join(f'"{term}"*' for term in terms)
+
+
 def list_articles(conn: Connection, *, municipality_key: str | None = None,
                   status: str | None = None, kind: str | None = None,
-                  thin: bool | None = None, limit: int = 100,
+                  thin: bool | None = None, search: str | None = None,
+                  limit: int = 100,
                   offset: int = 0) -> list[dict]:
     where, params = [], {}
     if municipality_key:
-        where.append("municipality_key = %(mk)s")
+        where.append("a.municipality_key = %(mk)s")
         params["mk"] = municipality_key
     if status:
-        where.append("status = %(status)s")
+        where.append("a.status = %(status)s")
         params["status"] = status
     if kind:
-        where.append("kind = %(kind)s")
+        where.append("a.kind = %(kind)s")
         params["kind"] = kind
     if thin is not None:
-        where.append("thin = %(thin)s")
+        where.append("a.thin = %(thin)s")
         params["thin"] = thin
+    fts = _fts_query(search or "")
+    if fts:
+        where.append("article_fts MATCH %(search)s")
+        params["search"] = fts
+    elif search:
+        where.append("0")
     clause = f"WHERE {' AND '.join(where)}" if where else ""
+    fts_join = "JOIN article_fts ON article_fts.rowid = a.rowid" if fts else ""
+    excerpt = (
+        ", snippet(article_fts, 2, '', '', ' … ', 28) AS excerpt" if fts else ""
+    )
+    ordering = (
+        "bm25(article_fts, 8.0, 3.0, 1.0), " if fts else ""
+    )
     return conn.execute(
         f"""SELECT a.municipality_key, m.name AS municipality_name, a.id, a.url,
                    a.title, a.kind, a.status, a.published_at, a.word_count,
-                   a.thin, a.ingested_at
+                   a.thin, a.ingested_at{excerpt}
             FROM article a JOIN municipality m ON m.key = a.municipality_key
+            {fts_join}
             {clause}
-            ORDER BY a.published_at DESC NULLS LAST, a.first_seen_at DESC
+            ORDER BY {ordering}a.published_at DESC NULLS LAST, a.first_seen_at DESC
             LIMIT %(limit)s OFFSET %(offset)s""",
         {**params, "limit": limit, "offset": offset},
     ).fetchall()
 
 
 def count_articles(conn: Connection, *, municipality_key: str | None = None,
-                   status: str | None = None, kind: str | None = None) -> int:
+                   status: str | None = None, kind: str | None = None,
+                   search: str | None = None) -> int:
     """Count articles using the public dashboard's list filters."""
     where, params = [], {}
     if municipality_key:
-        where.append("municipality_key = %(mk)s")
+        where.append("a.municipality_key = %(mk)s")
         params["mk"] = municipality_key
     if status:
-        where.append("status = %(status)s")
+        where.append("a.status = %(status)s")
         params["status"] = status
     if kind:
-        where.append("kind = %(kind)s")
+        where.append("a.kind = %(kind)s")
         params["kind"] = kind
+    fts = _fts_query(search or "")
+    if fts:
+        where.append("article_fts MATCH %(search)s")
+        params["search"] = fts
+    elif search:
+        where.append("0")
     clause = f"WHERE {' AND '.join(where)}" if where else ""
-    row = conn.execute(f"SELECT COUNT(*) AS n FROM article {clause}", params).fetchone()
+    fts_join = "JOIN article_fts ON article_fts.rowid = a.rowid" if fts else ""
+    row = conn.execute(
+        f"SELECT COUNT(*) AS n FROM article a {fts_join} {clause}", params
+    ).fetchone()
     return int(row["n"]) if row else 0
 
 

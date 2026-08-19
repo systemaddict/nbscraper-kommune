@@ -154,6 +154,12 @@ public. `/`, `/api/status`, and `/api/articles` require a valid session. Public
 signup is disabled; the first user is created from deployment-only bootstrap
 credentials.
 
+The article table includes native FTS5 search across title, summary and body.
+Use the dashboard search box or `GET /api/articles?q=cykelsti`; search can be
+combined with the municipality, type and status filters. Results are ranked by
+relevance, with title matches weighted highest. The index is backfilled once on
+upgrade and then maintained by database triggers.
+
 Set these variables on the dashboard container (not the worker):
 
 ```text

@@ -71,8 +71,10 @@
     .article-title a:hover { text-decoration: underline; }
     .badge.press { color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
     .filters { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-    select, .pager button { min-height: 2rem; padding: .35rem .6rem; color: var(--foreground); background: var(--background); border: 1px solid var(--border); border-radius: .5rem; }
-    select:focus, .pager button:focus { outline: 2px solid var(--ring); outline-offset: 1px; }
+    select, .search, .pager button { min-height: 2rem; padding: .35rem .6rem; color: var(--foreground); background: var(--background); border: 1px solid var(--border); border-radius: .5rem; }
+    select:focus, .search:focus, .pager button:focus { outline: 2px solid var(--ring); outline-offset: 1px; }
+    .search { width: min(22rem, 48vw); }
+    .article-excerpt { max-width: 42rem; margin-top: .25rem; white-space: normal; line-height: 1.35; }
     .pager { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1.1rem; border-top: 1px solid var(--border); }
     .pager-actions { display: flex; gap: .4rem; }
     .pager button { cursor: pointer; }
@@ -140,6 +142,7 @@
       <div class="card-head">
         <div><h2>Scrapede artikler</h2><p class="muted small" id="article-count">Henter artikler…</p></div>
         <div class="filters" aria-label="Artikel-filtre">
+          <input id="article-search" class="search" type="search" placeholder="Søg i titel og tekst…" aria-label="Søg i artikler" autocomplete="off">
           <select id="article-kind" aria-label="Type">
             <option value="">Alle typer</option>
             <option value="nyhed">Nyheder</option>
@@ -268,13 +271,14 @@
         const kind = row.kind === "pressemeddelelse" ? "Pressemeddelelse" : row.kind === "nyhed" ? "Nyhed" : row.kind || "Ukendt";
         const status = row.status === "ingested" ? "Indlæst" : row.status === "listed" ? "Afventer" : row.status === "gone" ? "Fjernet" : row.status;
         const statusClass = row.status === "ingested" ? "ok" : row.status === "gone" ? "bad" : "";
-        return `<tr><td class="article-title"><strong>${titleCell}</strong><div class="muted small">${esc(row.id)}</div></td><td>${esc(row.municipality_name)}</td><td><span class="badge ${row.kind === "pressemeddelelse" ? "press" : ""}">${esc(kind)}</span></td><td><span class="badge ${statusClass}">${esc(status)}</span></td><td>${date(row.published_at)}</td><td>${row.ingested_at ? relative(row.ingested_at) : "—"}</td><td class="num">${row.word_count == null ? "—" : nf.format(row.word_count)}</td></tr>`;
+        const excerpt = row.excerpt ? `<div class="muted small article-excerpt">${esc(row.excerpt)}</div>` : "";
+        return `<tr><td class="article-title"><strong>${titleCell}</strong>${excerpt}<div class="muted small">${esc(row.id)}</div></td><td>${esc(row.municipality_name)}</td><td><span class="badge ${row.kind === "pressemeddelelse" ? "press" : ""}">${esc(kind)}</span></td><td><span class="badge ${statusClass}">${esc(status)}</span></td><td>${date(row.published_at)}</td><td>${row.ingested_at ? relative(row.ingested_at) : "—"}</td><td class="num">${row.word_count == null ? "—" : nf.format(row.word_count)}</td></tr>`;
       }).join("") || `<tr><td colspan="7" class="empty">Ingen artikler matcher filtrene</td></tr>`;
     }
 
     async function refreshArticles() {
       const params = new URLSearchParams({limit: articleLimit, offset: articleOffset});
-      const filters = {kind: $("article-kind").value, status: $("article-status").value, municipality: $("article-municipality").value};
+      const filters = {q: $("article-search").value.trim(), kind: $("article-kind").value, status: $("article-status").value, municipality: $("article-municipality").value};
       Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
       try {
         const response = await fetch(`/api/articles?${params}`, {cache: "no-store"});
@@ -303,6 +307,11 @@
       }
     }
     ["article-kind", "article-status", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
+    let searchTimer;
+    $("article-search").addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { articleOffset = 0; refreshArticles(); }, 250);
+    });
     $("article-prev").addEventListener("click", () => { articleOffset = Math.max(0, articleOffset - articleLimit); refreshArticles(); });
     $("article-next").addEventListener("click", () => { if (articleOffset + articleLimit < articleTotal) articleOffset += articleLimit; refreshArticles(); });
     $("signout").addEventListener("click", async () => {

@@ -49,6 +49,11 @@ def _seed(settings: Settings) -> None:
         "listing_hash": "hash",
         "raw_json": "{}",
     })
+    conn.execute(
+        "UPDATE article SET summary = %s, body_text = %s WHERE municipality_key = %s AND id = %s",
+        ("Plan for grøn mobilitet", "Kommunen anlægger en ny cykelsti gennem byen.",
+         "test", "article-1"),
+    )
     repo.enqueue_ingest(conn, "test", "article-1", "new")
     repo.upsert_listed_article(conn, {
         "municipality_key": "test",
@@ -131,3 +136,28 @@ def test_articles_api_is_public_filterable_and_paginated(tmp_path):
     }
 
     assert client.get("/api/articles", params={"kind": "invalid"}).status_code == 422
+
+
+def test_articles_api_full_text_searches_body_and_combines_filters(tmp_path):
+    settings = _settings(tmp_path)
+    _seed(settings)
+    client = TestClient(create_app(settings))
+
+    response = client.get("/api/articles", params={"q": "cykel", "kind": "nyhed"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["id"] == "article-1"
+    assert "cykelsti" in payload["items"][0]["excerpt"]
+
+
+def test_articles_api_search_treats_fts_syntax_as_plain_text(tmp_path):
+    settings = _settings(tmp_path)
+    _seed(settings)
+    client = TestClient(create_app(settings))
+
+    response = client.get("/api/articles", params={"q": 'cykel OR "unterminated'})
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 0

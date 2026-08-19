@@ -99,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         municipality: str | None = None,
         kind: Literal["nyhed", "pressemeddelelse"] | None = None,
         status: Literal["listed", "ingested", "gone"] | None = None,
+        q: str | None = Query(None, min_length=1, max_length=200),
         limit: int = Query(25, ge=1, le=100),
         offset: int = Query(0, ge=0),
     ) -> dict[str, Any]:
@@ -107,6 +108,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "municipality_key": municipality,
             "kind": kind,
             "status": status,
+            "search": q,
         }
         return {
             "items": repo.list_articles(conn, **filters, limit=limit, offset=offset),
