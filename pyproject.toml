@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nbscraper-kommune"
+version = "0.1.0"
+description = "Scraper for Danish kommune news + press releases — discover → extract → store"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",               # HTTP client for listings, feeds and articles
+    "pydantic>=2.9",             # typed records
+    "pydantic-settings>=2.10",   # .env-aware config
+    "python-dotenv>=1.0",
+    "tenacity>=9.0",             # retry/backoff for HTTP
+    "beautifulsoup4>=4.12",      # HTML parsing (listings + article bodies)
+    "readability-lxml>=0.8",     # Mozilla Readability port — one of two body extractors
+    "lxml>=5",                   # fast parser backend for BeautifulSoup
+    "feedparser>=6.0",           # RSS/Atom — handles the messy real-world tail
+    "typer>=0.12",               # nbk CLI
+    "rich>=13",                  # tables + progress
+]
+
+[project.optional-dependencies]
+# 5 of the 98 sites render their news list client-side (Tårnby, Hvidovre,
+# Middelfart, Skive, Thisted). They need a real browser; everything else does not.
+browser = [
+    "playwright>=1.47",
+]
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+dev = [
+    "pytest>=8",
+    "respx>=0.21",               # httpx request mocking
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+nbk = "nbkommune.cli:app"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["nbkommune*"]
+
+[tool.setuptools.package-data]
+nbkommune = ["registry.json"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+# Pinned explicitly rather than riding ruff's defaults, so `ruff check` means the
+# same thing across versions and machines.
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "DTZ"]
+ignore = [
+    # This scraper's core design is to fail *open* against 98 sites it does not
+    # control: a malformed JSON-LD block, an invalid selector from config, an
+    # unreachable robots.txt or a broken child sitemap must degrade rather than
+    # take a kommune offline. Every such handler is commented with why it is
+    # broad; a blanket ban would push that logic into pretending to know which
+    # exceptions a stranger's CMS can raise.
+    "BLE001",
+    # Typer reads Optional[...] in command signatures; rewriting to `X | None`
+    # changes how it builds the CLI on some versions.
+    "UP045", "UP007",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# typer's API *is* calling Argument()/Option() in the default; there is no other
+# way to declare CLI metadata.
+"nbkommune/cli.py" = ["B008"]
+# Fixture HTML in tests is long by nature, and dict() calls read better than
+# literals when building keyword defaults for a test factory.
+"tests/*" = ["E501", "C408"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

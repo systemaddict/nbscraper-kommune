@@ -1,0 +1,1472 @@
+[
+  {
+    "key": "aabenraa",
+    "name": "Aabenraa",
+    "site_url": "https://aabenraa.dk",
+    "news_url": "https://aabenraa.dk/om-kommunen/nyheder",
+    "press_url": "https://aabenraa.dk/om-kommunen/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder"
+    },
+    "note": "Fælles side; linker desuden til eksternt Ritzau-presserum."
+  },
+  {
+    "key": "aalborg",
+    "name": "Aalborg",
+    "site_url": "https://www.aalborg.dk",
+    "news_url": "https://www.aalborg.dk/se-alt-nyt/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/se-alt-nyt"
+    },
+    "note": "Ingen dedikeret pressemeddelelses-side; pressetilmelding sker via ekstern PressCloud/Vocast."
+  },
+  {
+    "key": "aarhus",
+    "name": "Aarhus",
+    "site_url": "https://aarhus.dk",
+    "news_url": "https://aarhus.dk/nyt",
+    "press_url": "https://aarhus.dk/nyt",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyt"
+    },
+    "note": "Fælles side, filtrerbar på afdeling/år/måned. Separat Presserum er kun ressourceside."
+  },
+  {
+    "key": "aeroe",
+    "name": "Ærø",
+    "site_url": "https://www.aeroekommune.dk",
+    "news_url": "https://www.aeroekommune.dk/om-kommunen/kommunikation-og-presse/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/kommunikation-og-presse/nyheder"
+    },
+    "note": "Ingen generel pressemeddelelsesliste (kun projektspecifik 'Sommertogt'-side)."
+  },
+  {
+    "key": "albertslund",
+    "name": "Albertslund",
+    "site_url": "https://albertslund.dk",
+    "news_url": "https://albertslund.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Ingen dedikeret pressemeddelelses-side; kun pressekontaktside uden arkiv."
+  },
+  {
+    "key": "alleroed",
+    "name": "Allerød",
+    "site_url": "https://alleroed.dk",
+    "news_url": "https://alleroed.dk/nyheder",
+    "press_url": "https://alleroed.dk/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "To separate sider, begge verificeret aktive."
+  },
+  {
+    "key": "assens",
+    "name": "Assens",
+    "site_url": "https://www.assens.dk",
+    "news_url": "https://www.assens.dk/om-os/nyt-fra-assens-kommune/nyheder-og-pressemeddelelser",
+    "press_url": "https://www.assens.dk/om-os/nyt-fra-assens-kommune/nyheder-og-pressemeddelelser",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-os/nyt-fra-assens-kommune/nyheder-og-pressemeddelelser"
+    },
+    "note": "Fælles side med filtrering mellem Nyhed og Pressemeddelelse."
+  },
+  {
+    "key": "ballerup",
+    "name": "Ballerup",
+    "site_url": "https://ballerup.dk",
+    "news_url": "https://ballerup.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "ballerup.dk/presse er kun kontakt/billeder/aktindsigt, intet arkiv."
+  },
+  {
+    "key": "billund",
+    "name": "Billund",
+    "site_url": "https://www.billund.dk",
+    "news_url": "https://www.billund.dk/om-kommunen/presse/nyheder-og-pressekontakt/",
+    "press_url": "https://www.billund.dk/om-kommunen/presse/nyheder-og-pressekontakt/",
+    "channel": "auto",
+    "source_type": "tredjepart",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/presse/nyheder-og-pressekontakt"
+    },
+    "note": "Fælles side; linker videre til Ritzau-nyhedsrum for selve pressemeddelelserne. Siden er reelt pressekontakt; selve arkivet ligger på via.ritzau.dk/nyhedsrum/13560004."
+  },
+  {
+    "key": "bornholm",
+    "name": "Bornholm",
+    "site_url": "https://bornholm.dk",
+    "news_url": "https://bornholm.dk/nyheder",
+    "press_url": "https://bornholm.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Bornholms Regionskommune; gammelt domæne brk.dk redirecter til bornholm.dk."
+  },
+  {
+    "key": "broendby",
+    "name": "Brøndby",
+    "site_url": "https://www.brondby.dk",
+    "news_url": "https://www.brondby.dk/om-kommunen/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder"
+    },
+    "note": "Pressekontaktside henviser til nyhedssiden, intet separat arkiv."
+  },
+  {
+    "key": "broenderslev",
+    "name": "Brønderslev",
+    "site_url": "https://www.bronderslev.dk",
+    "news_url": "https://www.bronderslev.dk/om-kommunen/nyheder/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder/nyheder"
+    },
+    "note": "Ingen separat pressemeddelelses-side fundet."
+  },
+  {
+    "key": "dragoer",
+    "name": "Dragør",
+    "site_url": "https://www.dragoer.dk",
+    "news_url": "https://www.dragoer.dk/nyheder",
+    "press_url": "https://www.dragoer.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side for nyheder og pressemeddelelser."
+  },
+  {
+    "key": "egedal",
+    "name": "Egedal",
+    "site_url": "https://www.egedalkommune.dk",
+    "news_url": "https://www.egedalkommune.dk/nyheder",
+    "press_url": "https://www.egedalkommune.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Kun én fælles side; nyheder/pressemeddelelser er kategorier på samme side. Kanonisk adresse er uden www (egedalkommune.dk)."
+  },
+  {
+    "key": "esbjerg",
+    "name": "Esbjerg",
+    "site_url": "https://www.esbjerg.dk",
+    "news_url": "https://www.esbjerg.dk/om-kommunen/presserum",
+    "press_url": "https://www.esbjerg.dk/om-kommunen/presserum",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": false,
+    "config": {
+      "url_prefix": "/om-kommunen/presserum"
+    },
+    "note": "Presserum fungerer som fælles presse-/nyhedsside; ingen separat generel nyhedsside fundet. Kunne ikke hentes — serveren afviste gentagne forsøg (502). URL ser rigtig ud, men bekræft manuelt."
+  },
+  {
+    "key": "faaborg-midtfyn",
+    "name": "Faaborg-Midtfyn",
+    "site_url": "https://www.fmk.dk",
+    "news_url": "https://www.fmk.dk/se-alle-nyheder/",
+    "press_url": "https://www.fmk.dk/se-alle-nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/se-alle-nyheder"
+    },
+    "note": "Fælles side 'Nyheder og pressemeddelelser'; kun pressekontakt-shortcut i footer."
+  },
+  {
+    "key": "fanoe",
+    "name": "Fanø",
+    "site_url": "https://fanoe.dk",
+    "news_url": "https://fanoe.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Kun en kontaktside for Presse og kommunikation, ikke et arkiv."
+  },
+  {
+    "key": "favrskov",
+    "name": "Favrskov",
+    "site_url": "https://favrskov.dk",
+    "news_url": "https://favrskov.dk/nyheder",
+    "press_url": "https://favrskov.dk/presserum",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presserum indeholder pressekontakt og seneste nyheder, adskilt fra generel nyhedsside."
+  },
+  {
+    "key": "faxe",
+    "name": "Faxe",
+    "site_url": "https://www.faxekommune.dk",
+    "news_url": "https://www.faxekommune.dk/da/aktuelt/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da/aktuelt/nyheder"
+    },
+    "note": "Kommunikation og presse-side har kun kontakt/designmanual, ikke pressemeddelelsesliste."
+  },
+  {
+    "key": "fredensborg",
+    "name": "Fredensborg",
+    "site_url": "https://fredensborg.dk",
+    "news_url": "https://fredensborg.dk/kommunen/borgerinformation/nyheder",
+    "press_url": "https://via.ritzau.dk/nyhedsrum/13559293/fredensborg-kommune",
+    "channel": "auto",
+    "source_type": "tredjepart",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/kommunen/borgerinformation/nyheder"
+    },
+    "note": "Pressemeddelelser via eksternt Via Ritzau-presserum; egen side gav 404."
+  },
+  {
+    "key": "fredericia",
+    "name": "Fredericia",
+    "site_url": "https://www.fredericia.dk",
+    "news_url": "https://www.fredericia.dk/da/nyheder-presse",
+    "press_url": "https://www.fredericia.dk/da/nyheder-presse",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da/nyheder-presse"
+    },
+    "note": "Fælles side 'Nyheder og presse'."
+  },
+  {
+    "key": "frederiksberg",
+    "name": "Frederiksberg",
+    "site_url": "https://www.frederiksberg.dk",
+    "news_url": "https://www.frederiksberg.dk/kommunen/nyheder",
+    "press_url": "https://www.frederiksberg.dk/kommunen/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/kommunen/nyheder"
+    },
+    "note": "Fælles side; presserummet linker videre hertil som pressemeddelelser."
+  },
+  {
+    "key": "frederikshavn",
+    "name": "Frederikshavn",
+    "site_url": "https://frederikshavn.dk",
+    "news_url": "https://frederikshavn.dk/om-kommunen/nyheder-og-arrangementer/nyheder/nyheder-og-pressemeddelelser",
+    "press_url": "https://frederikshavn.dk/om-kommunen/nyheder-og-arrangementer/nyheder/nyheder-og-pressemeddelelser",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder-og-arrangementer/nyheder/nyheder-og-pressemeddelelser"
+    },
+    "note": "Fælles side 'Nyheder og pressemeddelelser'."
+  },
+  {
+    "key": "frederikssund",
+    "name": "Frederikssund",
+    "site_url": "https://www.frederikssund.dk",
+    "news_url": "https://www.frederikssund.dk/service/Nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/service/Nyheder"
+    },
+    "note": "Presse-siden er kun kontakt/design, henviser til fælles nyhedsarkiv."
+  },
+  {
+    "key": "furesoe",
+    "name": "Furesø",
+    "site_url": "https://www.furesoe.dk",
+    "news_url": "https://www.furesoe.dk/nyheder",
+    "press_url": "https://www.furesoe.dk/nyheder-samlet/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "To separate sider, begge verificeret aktive."
+  },
+  {
+    "key": "gentofte",
+    "name": "Gentofte",
+    "site_url": "https://gentofte.dk",
+    "news_url": "https://gentofte.dk/om-kommunen/nyheder-og-presse/nyheder/",
+    "press_url": "https://gentofte.dk/om-kommunen/nyheder-og-presse/pressemeddelelser/",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder"
+    },
+    "note": "To adskilte, verificerede arkivsider."
+  },
+  {
+    "key": "gladsaxe",
+    "name": "Gladsaxe",
+    "site_url": "https://gladsaxe.dk",
+    "news_url": "https://gladsaxe.dk/kommunen/presse/nyhedsarkiv",
+    "press_url": "https://gladsaxe.dk/kommunen/presse/nyhedsarkiv",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/kommunen/presse/nyhedsarkiv"
+    },
+    "note": "Fælles nyhedsarkiv under presse-sektionen."
+  },
+  {
+    "key": "glostrup",
+    "name": "Glostrup",
+    "site_url": "https://www.glostrup.dk",
+    "news_url": "https://www.glostrup.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presseside er kun kontaktinfo, intet arkiv."
+  },
+  {
+    "key": "greve",
+    "name": "Greve",
+    "site_url": "https://greve.dk",
+    "news_url": "https://greve.dk/nyheder",
+    "press_url": "https://via.ritzau.dk/nyhedsrum/13561855/greve-kommune",
+    "channel": "auto",
+    "source_type": "tredjepart",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Pressemeddelelser via eksternt Via Ritzau-presserum; egen presseside er kun kontakt."
+  },
+  {
+    "key": "gribskov",
+    "name": "Gribskov",
+    "site_url": "https://www.gribskov.dk",
+    "news_url": "https://www.gribskov.dk/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Kontakt/presse-side uden nyhedsliste; pressemeddelelser samles under generelle nyheder."
+  },
+  {
+    "key": "guldborgsund",
+    "name": "Guldborgsund",
+    "site_url": "https://www.guldborgsund.dk",
+    "news_url": "https://www.guldborgsund.dk/nyheder-og-pressemeddelelser",
+    "press_url": "https://www.guldborgsund.dk/nyheder-og-pressemeddelelser",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder-og-pressemeddelelser"
+    },
+    "note": "Fælles side, filtrerbar efter type og år."
+  },
+  {
+    "key": "haderslev",
+    "name": "Haderslev",
+    "site_url": "https://www.haderslev.dk",
+    "news_url": "https://www.haderslev.dk/nyheder",
+    "press_url": "https://www.haderslev.dk/presserum/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "To adskilte sider: Presserum og generel Nyheder-side."
+  },
+  {
+    "key": "halsnaes",
+    "name": "Halsnæs",
+    "site_url": "https://halsnaes.dk",
+    "news_url": "https://halsnaes.dk/nyheder",
+    "press_url": "https://halsnaes.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side 'Nyheder og pressemeddelelser'."
+  },
+  {
+    "key": "hedensted",
+    "name": "Hedensted",
+    "site_url": "https://www.hedensted.dk",
+    "news_url": "https://www.hedensted.dk/aktuelt",
+    "press_url": "https://www.hedensted.dk/om-kommunen/nyheder-og-presse/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/aktuelt"
+    },
+    "note": "Begge sider bekræftet som separate, adskilte sider."
+  },
+  {
+    "key": "helsingoer",
+    "name": "Helsingør",
+    "site_url": "https://www.helsingor.dk",
+    "news_url": "https://www.helsingor.dk/nyheder-og-fakta/nyheder-og-presse/nyheder",
+    "press_url": "https://www.helsingor.dk/nyheder-og-fakta/nyheder-og-presse/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder-og-fakta/nyheder-og-presse/nyheder"
+    },
+    "note": "Fælles side under 'Nyheder og presse'-hub."
+  },
+  {
+    "key": "herlev",
+    "name": "Herlev",
+    "site_url": "https://herlev.dk",
+    "news_url": "https://herlev.dk/nyheder",
+    "press_url": "https://herlev.dk/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "To separate sider, begge verificeret aktive."
+  },
+  {
+    "key": "herning",
+    "name": "Herning",
+    "site_url": "https://www.herning.dk",
+    "news_url": "https://www.herning.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presse-siden er kun pressekontakt/ressourcer, ikke et pressemeddelelsesarkiv."
+  },
+  {
+    "key": "hilleroed",
+    "name": "Hillerød",
+    "site_url": "https://www.hillerod.dk",
+    "news_url": "https://www.hillerod.dk/nyheder-og-fakta/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder-og-fakta/nyheder"
+    },
+    "note": "Ingen dedikeret pressemeddelelses-side fundet."
+  },
+  {
+    "key": "hjoerring",
+    "name": "Hjørring",
+    "site_url": "https://hjoerring.dk",
+    "news_url": "https://hjoerring.dk/nyt-og-presse/nyheder",
+    "press_url": "https://hjoerring.dk/nyt-og-presse/presse/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyt-og-presse/nyheder"
+    },
+    "note": "Separate, verificerede sider for pressemeddelelser og generelle nyheder."
+  },
+  {
+    "key": "hoeje-taastrup",
+    "name": "Høje-Taastrup",
+    "site_url": "https://www.htk.dk",
+    "news_url": "https://www.htk.dk/om-kommunen/presserum/nyheder",
+    "press_url": "https://www.htk.dk/om-kommunen/presserum/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/presserum/nyheder"
+    },
+    "note": "Kun én fælles side under Presserum."
+  },
+  {
+    "key": "hoersholm",
+    "name": "Hørsholm",
+    "site_url": "https://www.horsholm.dk",
+    "news_url": "https://www.horsholm.dk/nyhed",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyhed"
+    },
+    "note": "Presse-siden er kun pressekontakt."
+  },
+  {
+    "key": "holbaek",
+    "name": "Holbæk",
+    "site_url": "https://holbaek.dk",
+    "news_url": "https://holbaek.dk/om-kommunen/nyheder-og-presse/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder"
+    },
+    "note": "Fælles hub, men ingen separat pressemeddelelsesliste; kun pressekontaktside."
+  },
+  {
+    "key": "holstebro",
+    "name": "Holstebro",
+    "site_url": "https://www.holstebro.dk",
+    "news_url": "https://www.holstebro.dk/nyheder",
+    "press_url": "https://www.holstebro.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side ('både nyheder og pressemeddelelser'); separat Presserum uden pressemeddelelsesliste."
+  },
+  {
+    "key": "horsens",
+    "name": "Horsens",
+    "site_url": "https://horsens.dk",
+    "news_url": "https://horsens.dk/omhorsenskommune/presse/pressemeddelelser",
+    "press_url": "https://horsens.dk/omhorsenskommune/presse/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/omhorsenskommune/presse/pressemeddelelser"
+    },
+    "note": "Kun én fælles side; ingen separat generel nyhedsside fundet."
+  },
+  {
+    "key": "hvidovre",
+    "name": "Hvidovre",
+    "site_url": "https://www.hvidovre.dk",
+    "news_url": "https://www.hvidovre.dk/om-kommunen/nyheder",
+    "press_url": "https://www.hvidovre.dk/om-kommunen/presse/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": false,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder"
+    },
+    "note": "To separate sider, begge verificeret aktive. JS-krævet — begge sider returnerer tom body uden rendering. [DISABLED: needs browser rendering]"
+  },
+  {
+    "key": "ikast-brande",
+    "name": "Ikast-Brande",
+    "site_url": "https://ikast-brande.dk",
+    "news_url": "https://ikast-brande.dk/aktuelt-og-presse/nyheder",
+    "press_url": "https://ikast-brande.dk/aktuelt-og-presse/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/aktuelt-og-presse/nyheder"
+    },
+    "note": "Fælles side; separat presseside er kun kontakt."
+  },
+  {
+    "key": "ishoej",
+    "name": "Ishøj",
+    "site_url": "https://ishoj.dk",
+    "news_url": "https://ishoj.dk/aktuelt/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/aktuelt/nyheder"
+    },
+    "note": "Ingen dedikeret side; pressemeddelelser distribueres via ekstern Via Ritzau."
+  },
+  {
+    "key": "jammerbugt",
+    "name": "Jammerbugt",
+    "site_url": "https://www.jammerbugt.dk",
+    "news_url": "https://www.jammerbugt.dk/nyheder/",
+    "press_url": "https://www.jammerbugt.dk/nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; presse-siden er kun journalistkontakt."
+  },
+  {
+    "key": "kalundborg",
+    "name": "Kalundborg",
+    "site_url": "https://www.kalundborg.dk",
+    "news_url": "https://www.kalundborg.dk/nyheder-og-pressemeddelelser",
+    "press_url": "https://www.kalundborg.dk/nyheder-og-pressemeddelelser",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder-og-pressemeddelelser"
+    },
+    "note": "Fælles side (kombineret liste)."
+  },
+  {
+    "key": "kerteminde",
+    "name": "Kerteminde",
+    "site_url": "https://kerteminde.dk",
+    "news_url": "https://kerteminde.dk/kommunen/nyheder",
+    "press_url": "https://kerteminde.dk/kommunen/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/kommunen/nyheder"
+    },
+    "note": "Fælles side, filtrerbar via afkrydsningsfelt Nyheder/Pressemeddelelse."
+  },
+  {
+    "key": "koebenhavn",
+    "name": "København",
+    "site_url": "https://www.kk.dk",
+    "news_url": "https://www.kk.dk/nyheder",
+    "press_url": "https://www.kk.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; artikler tagget NYHED/PRESSEMEDDELELSE. Separat pressekontaktside (ikke arkiv): kk.dk/om-kommunen/presse."
+  },
+  {
+    "key": "koege",
+    "name": "Køge",
+    "site_url": "https://www.koege.dk",
+    "news_url": "https://www.koege.dk/om-koege-kommune/presse-og-kommunikation/nyheder-og-aktuelt/nyheder",
+    "press_url": "https://www.koege.dk/om-koege-kommune/presse-og-kommunikation/nyheder-og-aktuelt/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-koege-kommune/presse-og-kommunikation/nyheder-og-aktuelt/nyheder"
+    },
+    "note": "To underfaner, én for Nyheder og én for Pressemeddelelser."
+  },
+  {
+    "key": "kolding",
+    "name": "Kolding",
+    "site_url": "https://kolding.dk",
+    "news_url": "https://www.kolding.dk/om-kommunen/nyhedsarkiv",
+    "press_url": "https://via.ritzau.dk/nyhedsrum/13562705/kolding-kommune",
+    "channel": "auto",
+    "source_type": "tredjepart",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyhedsarkiv"
+    },
+    "note": "Pressemeddelelser via eksternt Via Ritzau-presserum; nyhedsarkiv på eget domæne. Nyhedsarkiv ligger på www.kolding.dk selvom hovedsiden er kolding.dk uden www."
+  },
+  {
+    "key": "laesoe",
+    "name": "Læsø",
+    "site_url": "https://www.laesoe.dk",
+    "news_url": "https://www.laesoe.dk/kommunen/nyhedsarkiv",
+    "press_url": "https://www.laesoe.dk/kommunen/nyhedsarkiv",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/kommunen/nyhedsarkiv"
+    },
+    "note": "Fælles side; Presserum er kun mediekontaktliste."
+  },
+  {
+    "key": "langeland",
+    "name": "Langeland",
+    "site_url": "https://langelandkommune.dk",
+    "news_url": "https://langelandkommune.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Ingen dedikeret pressemeddelelsesside fundet; alt samles under Nyheder."
+  },
+  {
+    "key": "lejre",
+    "name": "Lejre",
+    "site_url": "https://lejre.dk",
+    "news_url": "https://lejre.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Kun en pressekontaktside uden arkiv."
+  },
+  {
+    "key": "lemvig",
+    "name": "Lemvig",
+    "site_url": "https://lemvig.dk",
+    "news_url": "https://lemvig.dk/nyheder",
+    "press_url": "https://lemvig.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; ingen separat presseside fundet."
+  },
+  {
+    "key": "lolland",
+    "name": "Lolland",
+    "site_url": "https://www.lolland.dk",
+    "news_url": "https://www.lolland.dk/om-kommunen/presse-og-kommunikation/nyheder",
+    "press_url": "https://www.lolland.dk/om-kommunen/presse-og-kommunikation/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/presse-og-kommunikation/nyheder"
+    },
+    "note": "To adskilte, bekræftet fungerende sider."
+  },
+  {
+    "key": "lyngby-taarbaek",
+    "name": "Lyngby-Taarbæk",
+    "site_url": "https://www.ltk.dk",
+    "news_url": "https://www.ltk.dk/om-kommunen/nyheder",
+    "press_url": "https://www.ltk.dk/om-kommunen/til-pressen/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder"
+    },
+    "note": "To separate sider, begge verificeret aktive."
+  },
+  {
+    "key": "mariagerfjord",
+    "name": "Mariagerfjord",
+    "site_url": "https://www.mariagerfjord.dk",
+    "news_url": "https://www.mariagerfjord.dk/nyheder",
+    "press_url": "https://www.mariagerfjord.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side for nyheder og pressemeddelelser."
+  },
+  {
+    "key": "middelfart",
+    "name": "Middelfart",
+    "site_url": "https://middelfart.dk",
+    "news_url": "https://middelfart.dk/nyheder",
+    "press_url": "https://middelfart.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": false,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles nyhedsside med emnefilter Pressemeddelelse; gammel dedikeret sti nedlagt (404). JS-krævet — tom body uden rendering. [DISABLED: needs browser rendering]"
+  },
+  {
+    "key": "morsoe",
+    "name": "Morsø",
+    "site_url": "https://mors.dk",
+    "news_url": "https://mors.dk/om-kommunen/nyheder",
+    "press_url": "https://mors.dk/om-kommunen/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder"
+    },
+    "note": "Fælles side med filtrerbar kategori Pressemeddelelse."
+  },
+  {
+    "key": "naestved",
+    "name": "Næstved",
+    "site_url": "https://www.naestved.dk",
+    "news_url": "https://www.naestved.dk/nyheder",
+    "press_url": "https://www.naestved.dk/nyheder/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Pressemeddelelser er filtreret kategori under samme nyhedssystem. Pressesiden er en Ritzau-indlejring (sidetitel \"Ritzau\", udfyldningstekst i metadata) — intet eget indhold at hente."
+  },
+  {
+    "key": "norddjurs",
+    "name": "Norddjurs",
+    "site_url": "https://norddjurs.dk",
+    "news_url": "https://norddjurs.dk/nyheder",
+    "press_url": "https://norddjurs.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Kun én fælles side ('nyheder og pressemeddelelser'); gammel dedikeret URL giver 404."
+  },
+  {
+    "key": "nordfyns",
+    "name": "Nordfyns",
+    "site_url": "https://www.nordfynskommune.dk",
+    "news_url": "https://www.nordfynskommune.dk/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presse-side er kun kontakt for journalister; gammel pressemeddelelses-URL giver 404."
+  },
+  {
+    "key": "nyborg",
+    "name": "Nyborg",
+    "site_url": "https://www.nyborg.dk",
+    "news_url": "https://www.nyborg.dk/da/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da/nyheder"
+    },
+    "note": "Ingen dedikeret pressemeddelelses-side fundet."
+  },
+  {
+    "key": "odder",
+    "name": "Odder",
+    "site_url": "https://odder.dk",
+    "news_url": "https://odder.dk/nyheder",
+    "press_url": "https://odder.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Kun én fælles side 'Nyheder & presserum'."
+  },
+  {
+    "key": "odense",
+    "name": "Odense",
+    "site_url": "https://www.odense.dk",
+    "news_url": "https://www.odense.dk/presse/nyheder",
+    "press_url": "https://www.odense.dk/presse/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/presse/nyheder"
+    },
+    "note": "Bekræftet adskilte, fungerende sider (årsarkiver)."
+  },
+  {
+    "key": "odsherred",
+    "name": "Odsherred",
+    "site_url": "https://www.odsherred.dk",
+    "news_url": "https://www.odsherred.dk/da/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da/nyheder"
+    },
+    "note": "Alt samles under 'Aktuelle nyheder'; ingen separat pressemeddelelsesarkiv."
+  },
+  {
+    "key": "randers",
+    "name": "Randers",
+    "site_url": "https://www.randers.dk",
+    "news_url": "https://www.randers.dk/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presseside er kun kontaktside; nyheder inkl. pressemeddelelser publiceres samlet."
+  },
+  {
+    "key": "rebild",
+    "name": "Rebild",
+    "site_url": "https://rebild.dk",
+    "news_url": "https://www.mynewsdesk.com/dk/rebild",
+    "press_url": "https://www.mynewsdesk.com/dk/rebild",
+    "channel": "auto",
+    "source_type": "tredjepart",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/dk/rebild"
+    },
+    "note": "UDFYLDT: rebild.dk har ingen nyhedsoversigt. Pressemeddelelser udgives via Mynewsdesk. Presserum/kontakt: rebild.dk/om-kommunen/kontakt/presse."
+  },
+  {
+    "key": "ringkoebing-skjern",
+    "name": "Ringkøbing-Skjern",
+    "site_url": "https://www.rksk.dk",
+    "news_url": "https://www.rksk.dk/nyheder",
+    "press_url": "https://www.rksk.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side, beskrevet som 'samlet nyhedsoversigt over pressemeddelelser'."
+  },
+  {
+    "key": "ringsted",
+    "name": "Ringsted",
+    "site_url": "https://ringsted.dk",
+    "news_url": "https://ringsted.dk/da/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": false,
+    "config": {
+      "url_prefix": "/da/nyheder"
+    },
+    "note": "Gammel side ringsted.dk/pressemeddelelser findes ikke længere; kun pressekontaktside. Kunne ikke hentes — serveren afviste gentagne forsøg (502). URL ser rigtig ud, men bekræft manuelt."
+  },
+  {
+    "key": "roedovre",
+    "name": "Rødovre",
+    "site_url": "https://rk.dk",
+    "news_url": "https://rk.dk/service-og-pressemeddelelser",
+    "press_url": "https://rk.dk/borger/om-kommunen/presserum/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/service-og-pressemeddelelser"
+    },
+    "note": "RETTET: www.rk.dk/nyheder/ gav 404. Kommunen har ingen selvstændig nyhedsside; service- og pressemeddelelser er det nærmeste. Begge sider indlæser listen med JavaScript."
+  },
+  {
+    "key": "roskilde",
+    "name": "Roskilde",
+    "site_url": "https://www.roskilde.dk",
+    "news_url": "https://www.roskilde.dk/da-dk/nyheder/",
+    "press_url": "https://www.roskilde.dk/da-dk/nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da-dk/nyheder"
+    },
+    "note": "Intet selvstændigt pressearkiv; nyhedssiden dækker eksplicit også pressemeddelelser."
+  },
+  {
+    "key": "rudersdal",
+    "name": "Rudersdal",
+    "site_url": "https://rudersdal.dk",
+    "news_url": "https://rudersdal.dk/nyheder",
+    "press_url": "https://via.ritzau.dk/nyhedsrum/13561555/rudersdal-kommune",
+    "channel": "auto",
+    "source_type": "tredjepart",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Pressemeddelelser via eksternt Via Ritzau-presserum, linket fra rudersdal.dk/om-kommunen/presse."
+  },
+  {
+    "key": "samsoe",
+    "name": "Samsø",
+    "site_url": "https://www.samsoe.dk",
+    "news_url": "https://www.samsoe.dk/om-kommunen/nyheder-og-presse/nyheder",
+    "press_url": "https://www.samsoe.dk/om-kommunen/nyheder-og-presse/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder"
+    },
+    "note": "Kun én fælles side; separat pressekontakt-og-logo-side uden arkiv."
+  },
+  {
+    "key": "silkeborg",
+    "name": "Silkeborg",
+    "site_url": "https://silkeborg.dk",
+    "news_url": "https://silkeborg.dk/nyheder",
+    "press_url": "https://silkeborg.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; Presserum er kun pressekontakt/billeder/retningslinjer."
+  },
+  {
+    "key": "skanderborg",
+    "name": "Skanderborg",
+    "site_url": "https://www.skanderborg.dk",
+    "news_url": "https://www.skanderborg.dk/nyheder",
+    "press_url": "https://www.skanderborg.dk/politik-og-faellesskab/administration/kontakt/presserum",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": false,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presserum indeholder et pressemeddelelses-arkiv, adskilt fra generel nyhedsside. Presserum svarer, men det er uklart om siden er arkiv eller kun pressekontakt — bekræft manuelt."
+  },
+  {
+    "key": "skive",
+    "name": "Skive",
+    "site_url": "https://skive.dk",
+    "news_url": "https://skive.dk/nyheder/",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": false,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Ingen separat pressemeddelelses-side fundet; kun generel nyhedsside. JS-krævet — siden leverer 14 tegn; alt indhold er klientside. [DISABLED: needs browser rendering]"
+  },
+  {
+    "key": "slagelse",
+    "name": "Slagelse",
+    "site_url": "https://www.slagelse.dk",
+    "news_url": "https://www.slagelse.dk/da/nyheder/",
+    "press_url": "https://www.slagelse.dk/da/nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da/nyheder"
+    },
+    "note": "Fælles side, kan filtreres på Alle/Nyheder/Pressemeddelelser. Omdirigerer til /da/nyheder?limit=16."
+  },
+  {
+    "key": "soenderborg",
+    "name": "Sønderborg",
+    "site_url": "https://sonderborgkommune.dk",
+    "news_url": "https://sonderborgkommune.dk/nyheder",
+    "press_url": "https://sonderborgkommune.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; separat pressekontaktside uden pressemeddelelsesliste."
+  },
+  {
+    "key": "solroed",
+    "name": "Solrød",
+    "site_url": "https://solrod.dk",
+    "news_url": "https://solrod.dk/aktuelt/nyheder",
+    "press_url": "https://solrod.dk/aktuelt/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/aktuelt/nyheder"
+    },
+    "note": "Fælles side; presseside linker hertil. Separat presseside er kun kontakt/fotos."
+  },
+  {
+    "key": "soroe",
+    "name": "Sorø",
+    "site_url": "https://soroe.dk",
+    "news_url": "https://soroe.dk/om-soroe-kommune/nyheder",
+    "press_url": "https://soroe.dk/om-soroe-kommune/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-soroe-kommune/nyheder"
+    },
+    "note": "Fælles side; artikler mærket PRESSEMEDDELELSE eller NYHED."
+  },
+  {
+    "key": "stevns",
+    "name": "Stevns",
+    "site_url": "https://www.stevns.dk",
+    "news_url": "https://www.stevns.dk/nyheder",
+    "press_url": "https://www.stevns.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presse-siden linker videre ('Gå til pressemeddelelser') til fælles nyhedsside."
+  },
+  {
+    "key": "struer",
+    "name": "Struer",
+    "site_url": "https://www.struer.dk",
+    "news_url": "https://www.struer.dk/nyheder",
+    "press_url": "https://www.struer.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; presseside bekræfter pressemeddelelser ligger som del af nyhederne."
+  },
+  {
+    "key": "svendborg",
+    "name": "Svendborg",
+    "site_url": "https://www.svendborg.dk",
+    "news_url": "https://www.svendborg.dk/nyheder/",
+    "press_url": "https://www.svendborg.dk/nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "RETTET: /kommunen/nyheder/pressemeddelelser gav 404. Fælles feed hvor hver post er mærket Nyhed / Pressemeddelelse / Vejarbejde / Kort information."
+  },
+  {
+    "key": "syddjurs",
+    "name": "Syddjurs",
+    "site_url": "https://www.syddjurs.dk",
+    "news_url": "https://www.syddjurs.dk/nyheder/nyheder",
+    "press_url": "https://www.syddjurs.dk/nyheder/pressemeddelelser",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder/nyheder"
+    },
+    "note": "Begge sider bekræftet som separate, adskilte sider."
+  },
+  {
+    "key": "taarnby",
+    "name": "Tårnby",
+    "site_url": "https://www.taarnby.dk",
+    "news_url": "https://www.taarnby.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": false,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Ingen dedikeret pressemeddelelses-side; kun pressekontaktside uden arkiv. JS-krævet — sidens indhold hentes klientside; kun cookiebanner uden rendering. [DISABLED: needs browser rendering]"
+  },
+  {
+    "key": "thisted",
+    "name": "Thisted",
+    "site_url": "https://www.thisted.dk",
+    "news_url": "https://www.thisted.dk/nyheder",
+    "press_url": "https://www.thisted.dk/nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": false,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Fælles side; presse-siden oplyser at pressemeddelelser udgives som nyheder. JS-krævet — tom body selv med rendering. [DISABLED: needs browser rendering]"
+  },
+  {
+    "key": "toender",
+    "name": "Tønder",
+    "site_url": "https://www.toender.dk",
+    "news_url": "https://www.toender.dk/din-kommune/nyheder-og-presse/nyheder-og-pressemeddelelser/",
+    "press_url": "https://www.toender.dk/din-kommune/nyheder-og-presse/nyheder-og-pressemeddelelser/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/din-kommune/nyheder-og-presse/nyheder-og-pressemeddelelser"
+    },
+    "note": "Fælles side for nyheder og pressemeddelelser."
+  },
+  {
+    "key": "vallensbaek",
+    "name": "Vallensbæk",
+    "site_url": "https://www.vallensbaek.dk",
+    "news_url": "https://www.vallensbaek.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Presse-og-nyheder-sektion har kun pressekontakt/fotos, intet arkiv."
+  },
+  {
+    "key": "varde",
+    "name": "Varde",
+    "site_url": "https://vardekommune.dk",
+    "news_url": "https://vardekommune.dk/nyheder/",
+    "press_url": "https://vardekommune.dk/kommunen/presse/pressemeddelelser/",
+    "channel": "auto",
+    "source_type": "separat",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Pressemeddelelser via indlejret Ritzau-feed; nyheder er eget arkiv. Pressesiden er en Ritzau-indlejring bag samtykke: uden marketing-cookies vises ingen pressemeddelelser."
+  },
+  {
+    "key": "vejen",
+    "name": "Vejen",
+    "site_url": "https://vejen.dk",
+    "news_url": "https://vejen.dk/presserum/pressemeddelelser-og-nyheder",
+    "press_url": "https://vejen.dk/presserum/pressemeddelelser-og-nyheder",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/presserum/pressemeddelelser-og-nyheder"
+    },
+    "note": "Fælles side med filtrering mellem Pressemeddelelse og Nyhed."
+  },
+  {
+    "key": "vejle",
+    "name": "Vejle",
+    "site_url": "https://www.vejle.dk",
+    "news_url": "https://www.vejle.dk/da/nyheder/",
+    "press_url": "https://www.vejle.dk/da/nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/da/nyheder"
+    },
+    "note": "Fælles side; artikler mærket Nyhed eller Pressemeddelelse."
+  },
+  {
+    "key": "vesthimmerland",
+    "name": "Vesthimmerland",
+    "site_url": "https://vesthimmerland.dk",
+    "news_url": "https://vesthimmerland.dk/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/nyheder"
+    },
+    "note": "Tidligere pressemeddelelse-arkiv giver nu 404; Presserum er kun kontaktinfo."
+  },
+  {
+    "key": "viborg",
+    "name": "Viborg",
+    "site_url": "https://viborg.dk",
+    "news_url": "https://viborg.dk/om-kommunen/nyheder-og-presse/nyheder/",
+    "press_url": "https://viborg.dk/om-kommunen/nyheder-og-presse/nyheder/",
+    "channel": "auto",
+    "source_type": "faelles",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder"
+    },
+    "note": "Kun én fælles side ('nyheder og pressemeddelelser')."
+  },
+  {
+    "key": "vordingborg",
+    "name": "Vordingborg",
+    "site_url": "https://www.vordingborg.dk",
+    "news_url": "https://www.vordingborg.dk/kommunen/nyheder",
+    "press_url": "",
+    "channel": "auto",
+    "source_type": "kun_nyheder",
+    "enabled": true,
+    "verified": true,
+    "config": {
+      "url_prefix": "/kommunen/nyheder"
+    },
+    "note": "Presse-siden er kun kontakt/billedarkiv, intet arkiv over pressemeddelelser."
+  }
+]
