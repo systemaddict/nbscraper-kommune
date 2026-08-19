@@ -62,14 +62,6 @@
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .error-message { margin-top: .2rem; color: var(--muted-fg); font-size: .74rem; overflow-wrap: anywhere; }
     .empty { color: var(--muted-fg); font-size: .82rem; padding: .5rem 0; }
-    .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgb(9 9 11 / .58); backdrop-filter: blur(4px); z-index: 20; }
-    .overlay[hidden] { display: none; }
-    .login { width: min(410px, 100%); padding: 1.4rem; }
-    label { display: block; margin: 1rem 0 .4rem; font-size: .8rem; font-weight: 500; }
-    input { width: 100%; padding: .62rem .75rem; color: var(--foreground); background: var(--background); border: 1px solid var(--border); border-radius: .5rem; outline: 0; }
-    input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent); }
-    button { margin-top: .75rem; width: 100%; padding: .62rem .8rem; border: 0; border-radius: .5rem; color: var(--background); background: var(--foreground); cursor: pointer; font-weight: 600; }
-    .login-error { min-height: 1.2rem; color: var(--danger); font-size: .78rem; }
     @media (max-width: 1000px) { .stats { grid-template-columns: repeat(2, 1fr); } .columns { grid-template-columns: 1fr; } }
     @media (max-width: 640px) { .shell { padding: 1rem; } header { flex-direction: column; } .stats { grid-template-columns: 1fr 1fr; } .stat-value { font-size: 1.45rem; } }
     @media (prefers-color-scheme: dark) {
@@ -126,21 +118,9 @@
     </section>
   </main>
 
-  <div class="overlay" id="login-overlay">
-    <form class="card login" id="login-form">
-      <h2>Åbn driftsstatus</h2>
-      <p class="muted small">Indtast dashboard-tokenet. Det gemmes kun i denne browserfane.</p>
-      <label for="token">Token</label>
-      <input id="token" name="token" type="password" autocomplete="current-password" required autofocus>
-      <button type="submit">Fortsæt</button>
-      <p class="login-error" id="login-error"></p>
-    </form>
-  </div>
-
   <script>
     const $ = (id) => document.getElementById(id);
     const nf = new Intl.NumberFormat("da-DK");
-    let token = sessionStorage.getItem("nbk-dashboard-token") || "";
     let timer;
 
     function esc(value) {
@@ -201,39 +181,20 @@
       $("error-list").innerHTML = data.recent_errors.slice(0, 8).map((row) => `<div class="task"><span class="badge bad">${esc(row.phase)}</span><div class="task-main"><div class="truncate"><strong>${esc(row.municipality_key || "system")}</strong> · ${esc(row.error_type || "Fejl")}</div><div class="error-message">${esc(row.message)}</div></div><span class="muted small">${relative(row.created_at)}</span></div>`).join("") || `<div class="empty">Ingen registrerede fejl</div>`;
     }
 
-    async function refresh({fromLogin = false} = {}) {
-      if (!token) { $("login-overlay").hidden = false; return; }
+    async function refresh() {
       try {
-        const response = await fetch("/api/status", {headers: {Authorization: `Bearer ${token}`}, cache: "no-store"});
-        if (response.status === 401 || response.status === 503) {
-          if (response.status === 401) sessionStorage.removeItem("nbk-dashboard-token");
-          throw new Error(response.status === 503 ? "Dashboard-token er ikke konfigureret på serveren." : "Tokenet blev afvist.");
-        }
+        const response = await fetch("/api/status", {cache: "no-store"});
         if (!response.ok) throw new Error(`API-fejl ${response.status}`);
         render(await response.json());
-        $("login-overlay").hidden = true;
-        $("login-error").textContent = "";
         clearTimeout(timer);
         timer = setTimeout(refresh, 10_000);
       } catch (error) {
         $("status-dot").className = "dot degraded";
-        $("status-text").textContent = "Forbindelsen fejlede";
-        if (fromLogin || !sessionStorage.getItem("nbk-dashboard-token")) {
-          $("login-overlay").hidden = false;
-          $("login-error").textContent = error.message;
-        } else {
-          clearTimeout(timer);
-          timer = setTimeout(refresh, 15_000);
-        }
+        $("status-text").textContent = `Forbindelsen fejlede: ${error.message}`;
+        clearTimeout(timer);
+        timer = setTimeout(refresh, 15_000);
       }
     }
-
-    $("login-form").addEventListener("submit", (event) => {
-      event.preventDefault();
-      token = new FormData(event.currentTarget).get("token").trim();
-      sessionStorage.setItem("nbk-dashboard-token", token);
-      refresh({fromLogin: true});
-    });
     refresh();
   </script>
 </body>

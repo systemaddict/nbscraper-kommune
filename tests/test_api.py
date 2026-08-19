@@ -24,11 +24,10 @@ def _target() -> SimpleNamespace:
     )
 
 
-def _settings(tmp_path, *, token: str = "test-secret") -> Settings:
+def _settings(tmp_path) -> Settings:
     return Settings(
         _env_file=None,
         BUNNY_DATABASE_URL=f"file:{tmp_path / 'status.db'}",
-        dashboard_token=token,
     )
 
 
@@ -66,19 +65,12 @@ def test_health_and_dashboard_shell_are_public(tmp_path):
     assert "NBK_DASHBOARD_TOKEN" not in page.text
 
 
-def test_status_api_requires_token_and_returns_snapshot(tmp_path):
+def test_status_api_is_public_and_returns_snapshot(tmp_path):
     settings = _settings(tmp_path)
     _seed(settings)
     client = TestClient(create_app(settings))
 
-    assert client.get("/api/status").status_code == 401
-    assert client.get(
-        "/api/status", headers={"Authorization": "Bearer wrong"}
-    ).status_code == 401
-
-    response = client.get(
-        "/api/status", headers={"Authorization": "Bearer test-secret"}
-    )
+    response = client.get("/api/status")
     assert response.status_code == 200
     payload = response.json()
     assert payload["state"] == "healthy"
@@ -94,12 +86,3 @@ def test_status_api_requires_token_and_returns_snapshot(tmp_path):
     assert payload["queue"]["by_status"]["queued"] == 1
     assert payload["next_tasks"][0]["municipality_key"] == "test"
     assert payload["municipalities"][0]["channel"] == "listing"
-
-
-def test_status_api_fails_closed_without_configured_token(tmp_path):
-    settings = _settings(tmp_path, token="")
-    client = TestClient(create_app(settings))
-
-    response = client.get("/api/status", headers={"Authorization": "Bearer anything"})
-    assert response.status_code == 503
-

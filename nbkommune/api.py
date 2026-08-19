@@ -3,43 +3,22 @@
 The worker remains the only process that mutates queue state. This module opens
 one short-lived database connection per request and exposes a single compact
 snapshot for the dashboard to poll. ``/healthz`` and the HTML shell are public;
-live data requires ``NBK_DASHBOARD_TOKEN`` and fails closed when it is unset.
+the snapshot is public too while the dashboard is an internal operational aid.
 """
 from __future__ import annotations
 
-import secrets
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from importlib.resources import files
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 
 from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.db import Connection
 from nbkommune.settings import Settings, get_settings
-
-
-def require_token(request: Request) -> None:
-    """Bearer-token guard that deliberately fails closed when unconfigured."""
-    expected = request.app.state.settings.dashboard_token.strip()
-    if not expected:
-        raise HTTPException(status_code=503, detail="dashboard auth is not configured")
-    header = request.headers.get("authorization", "")
-    if not header.lower().startswith("bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="missing bearer token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    if not secrets.compare_digest(header[7:].strip(), expected):
-        raise HTTPException(
-            status_code=401,
-            detail="invalid bearer token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 
 def get_conn(request: Request) -> Iterator[Connection]:
@@ -109,7 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/api/status", dependencies=[Depends(require_token)])
+    @app.get("/api/status")
     def status(conn: Annotated[Connection, Depends(get_conn)]) -> dict[str, Any]:
         return _snapshot(conn)
 

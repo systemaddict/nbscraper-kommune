@@ -142,13 +142,11 @@ Bunny Database provides these variables to the container:
 ```text
 BUNNY_DATABASE_URL
 BUNNY_DATABASE_AUTH_TOKEN
-NBK_DASHBOARD_TOKEN
 ```
 
-`/healthz` and the dashboard HTML shell are public so Bunny can probe and serve
-them. `/api/status` requires `Authorization: Bearer …` and returns 503 when the
-token is missing from the container configuration. The browser asks for the
-token and retains it only in `sessionStorage` for that tab.
+`/healthz`, the dashboard HTML, and the read-only `/api/status` snapshot are
+public. The dashboard container has a separate read-only Bunny Database token;
+password protection can be added later without changing the worker.
 
 Create and link a database with Bunny's CLI, or attach an existing database from
 its **Access > Add Secrets to Magic Container App** screen:
