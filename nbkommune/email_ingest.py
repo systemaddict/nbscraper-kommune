@@ -9,6 +9,7 @@ from datetime import datetime
 from urllib.parse import urlsplit
 
 from nbkommune import repositories as repo
+from nbkommune.dates import below_floor
 from nbkommune.email_classifier import (
     EmailDecision,
     OpenRouterClassifier,
@@ -164,6 +165,25 @@ def process_email(conn, settings: Settings, message: ParsedEmail,
         existing_message = repo.get_email_message(conn, message.gmail_message_id)
         if existing_message and existing_message["status"] not in {"new", "error"}:
             return "duplicate"
+
+    published_at = message.sent_at or message.received_at
+    if below_floor(published_at, settings.min_published_floor):
+        repo.set_email_decision(
+            conn,
+            message.gmail_message_id,
+            municipality_key=None,
+            classification="other",
+            confidence=1.0,
+            source="date_floor",
+            reason=(
+                "email predates publication floor "
+                f"{settings.min_published_date}"
+            ),
+            sender_scope="unknown",
+            status="ignored",
+        )
+        conn.commit()
+        return "ignored"
 
     targets = list(registry(settings).values())
     decision = deterministic_decision(

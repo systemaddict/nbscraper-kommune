@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import httpx
@@ -211,6 +212,25 @@ def test_known_sender_is_cached_and_second_message_needs_no_ai():
     assert first == second == "ingested"
     assert repo.get_sender_resolution(conn, "margit.kjellquist@koege.dk")["mode"] == "fixed"
     assert repo.count_email_messages(conn, status="ingested") == 2
+
+
+def test_email_before_publication_floor_is_ignored_without_ai_or_sender_cache():
+    settings = _settings(min_published_date="2026-01-01")
+    conn = db.connect(settings)
+    db.init_schema(conn, settings)
+    message = replace(
+        _message("old", "unknown@example.com", "En gammel pressemeddelelse"),
+        sent_at="2025-12-31T23:59:59+00:00",
+        received_at="2026-01-01T00:00:01+00:00",
+    )
+
+    outcome = process_email(conn, settings, message)
+
+    stored = repo.get_email_message(conn, message.gmail_message_id)
+    assert outcome == "ignored"
+    assert stored["classification_source"] == "date_floor"
+    assert repo.get_sender_resolution(conn, message.sender_email) is None
+    assert repo.count_email_messages(conn, status="ignored") == 1
 
 
 def test_shared_sender_is_classified_for_every_message():
