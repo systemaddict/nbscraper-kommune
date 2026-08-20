@@ -3,14 +3,14 @@
     "key": "aabenraa",
     "name": "Aabenraa",
     "site_url": "https://aabenraa.dk",
-    "news_url": "https://aabenraa.dk/om-kommunen/nyheder",
-    "press_url": "https://aabenraa.dk/om-kommunen/nyheder",
-    "channel": "auto",
+    "news_url": "https://aabenraa.dk/om-kommunen/nyheder/nyheder",
+    "press_url": "https://aabenraa.dk/om-kommunen/nyheder/nyheder",
+    "channel": "sitemap",
     "source_type": "faelles",
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/nyheder"
+      "url_prefix": "/om-kommunen/nyheder/nyheder"
     },
     "note": "Fælles side; linker desuden til eksternt Ritzau-presserum."
   },
@@ -55,7 +55,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/kommunikation-og-presse/nyheder"
+      "url_prefix": "/om-kommunen/kommunikation-og-presse/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Ingen generel pressemeddelelsesliste (kun projektspecifik 'Sommertogt'-side)."
   },
@@ -85,7 +86,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "To separate sider, begge verificeret aktive."
   },
@@ -100,7 +102,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-os/nyt-fra-assens-kommune/nyheder-og-pressemeddelelser"
+      "url_prefix": "/om-os/nyt-fra-assens-kommune/nyheder-og-pressemeddelelser",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Fælles side med filtrering mellem Nyhed og Pressemeddelelse."
   },
@@ -145,7 +148,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Bornholms Regionskommune; gammelt domæne brk.dk redirecter til bornholm.dk."
   },
@@ -175,7 +179,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/nyheder/nyheder"
+      "url_prefix": "/om-kommunen/nyheder/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Ingen separat pressemeddelelses-side fundet."
   },
@@ -205,7 +210,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Kun én fælles side; nyheder/pressemeddelelser er kategorier på samme side. Kanonisk adresse er uden www (egedalkommune.dk)."
   },
@@ -213,16 +219,20 @@
     "key": "esbjerg",
     "name": "Esbjerg",
     "site_url": "https://www.esbjerg.dk",
-    "news_url": "https://www.esbjerg.dk/om-kommunen/presserum",
-    "press_url": "https://www.esbjerg.dk/om-kommunen/presserum",
-    "channel": "auto",
-    "source_type": "faelles",
+    "news_url": "https://via.ritzau.dk/nyhedsrum/13560064/esbjerg-kommune/r",
+    "press_url": "https://via.ritzau.dk/nyhedsrum/13560064/esbjerg-kommune/r",
+    "channel": "listing",
+    "source_type": "tredjepart",
     "enabled": true,
-    "verified": false,
+    "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/presserum"
+      "item_selector": "article",
+      "link_selector": "a[href*='/pressemeddelelse/']",
+      "title_selector": "h2",
+      "summary_selector": "[data-cypress='grid-card-content']",
+      "date_selector": "h2 > small"
     },
-    "note": "Presserum fungerer som fælles presse-/nyhedsside; ingen separat generel nyhedsside fundet. Kunne ikke hentes — serveren afviste gentagne forsøg (502). URL ser rigtig ud, men bekræft manuelt."
+    "note": "Pressemeddelelser publiceres i kommunens eksterne Via Ritzau-presserum."
   },
   {
     "key": "faaborg-midtfyn",
@@ -265,7 +275,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "favrskov-visible-date"
     },
     "note": "Presserum indeholder pressekontakt og seneste nyheder, adskilt fra generel nyhedsside."
   },
@@ -295,7 +306,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/kommunen/borgerinformation/nyheder"
+      "url_prefix": "/kommunen/borgerinformation/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Pressemeddelelser via eksternt Via Ritzau-presserum; egen side gav 404."
   },
@@ -370,7 +382,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "To separate sider, begge verificeret aktive."
   },
@@ -415,7 +428,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Presseside er kun kontaktinfo, intet arkiv."
   },
@@ -445,7 +459,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Kontakt/presse-side uden nyhedsliste; pressemeddelelser samles under generelle nyheder."
   },
@@ -490,7 +505,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side 'Nyheder og pressemeddelelser'."
   },
@@ -520,7 +536,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder-og-fakta/nyheder-og-presse/nyheder"
+      "url_prefix": "/nyheder-og-fakta/nyheder-og-presse/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side under 'Nyheder og presse'-hub."
   },
@@ -550,7 +567,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Presse-siden er kun pressekontakt/ressourcer, ikke et pressemeddelelsesarkiv."
   },
@@ -580,7 +598,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyt-og-presse/nyheder"
+      "url_prefix": "/nyt-og-presse/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Separate, verificerede sider for pressemeddelelser og generelle nyheder."
   },
@@ -595,7 +614,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/presserum/nyheder"
+      "url_prefix": "/om-kommunen/presserum/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Kun én fælles side under Presserum."
   },
@@ -610,7 +630,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyhed"
+      "url_prefix": "/nyhed",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Presse-siden er kun pressekontakt."
   },
@@ -625,7 +646,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder"
+      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles hub, men ingen separat pressemeddelelsesliste; kun pressekontaktside."
   },
@@ -640,7 +662,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "holstebro-visible-date"
     },
     "note": "Fælles side ('både nyheder og pressemeddelelser'); separat Presserum uden pressemeddelelsesliste."
   },
@@ -674,7 +697,8 @@
       "url_prefixes": [
         "/om-kommunen/nyheder",
         "/om-kommunen/presse/pressemeddelelser"
-      ]
+      ],
+      "published_date_profile": "hvidovre-visible-date"
     },
     "note": "To separate sider, begge dækket af kommunens sitemap."
   },
@@ -704,7 +728,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/aktuelt/nyheder"
+      "url_prefix": "/aktuelt/nyheder",
+      "published_date_profile": "ishoej-visible-date"
     },
     "note": "Ingen dedikeret side; pressemeddelelser distribueres via ekstern Via Ritzau."
   },
@@ -734,7 +759,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder-og-pressemeddelelser"
+      "url_prefix": "/nyheder-og-pressemeddelelser",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side (kombineret liste)."
   },
@@ -749,7 +775,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/kommunen/nyheder"
+      "url_prefix": "/kommunen/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Fælles side, filtrerbar via afkrydsningsfelt Nyheder/Pressemeddelelse."
   },
@@ -764,7 +791,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "koebenhavn-publication-date"
     },
     "note": "Fælles side; artikler tagget NYHED/PRESSEMEDDELELSE. Separat pressekontaktside (ikke arkiv): kk.dk/om-kommunen/presse."
   },
@@ -779,7 +807,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-koege-kommune/presse-og-kommunikation/nyheder-og-aktuelt/nyheder"
+      "url_prefix": "/om-koege-kommune/presse-og-kommunikation/nyheder-og-aktuelt/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "To underfaner, én for Nyheder og én for Pressemeddelelser."
   },
@@ -794,7 +823,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/nyhedsarkiv"
+      "url_prefix": "/om-kommunen/nyhedsarkiv",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Pressemeddelelser via eksternt Via Ritzau-presserum; nyhedsarkiv på eget domæne. Nyhedsarkiv ligger på www.kolding.dk selvom hovedsiden er kolding.dk uden www."
   },
@@ -809,7 +839,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/kommunen/nyhedsarkiv"
+      "url_prefix": "/kommunen/nyhedsarkiv",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Fælles side; Presserum er kun mediekontaktliste."
   },
@@ -824,7 +855,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Ingen dedikeret pressemeddelelsesside fundet; alt samles under Nyheder."
   },
@@ -854,7 +886,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side; ingen separat presseside fundet."
   },
@@ -869,7 +902,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/presse-og-kommunikation/nyheder"
+      "url_prefix": "/om-kommunen/presse-og-kommunikation/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "To adskilte, bekræftet fungerende sider."
   },
@@ -915,7 +949,8 @@
     "verified": true,
     "config": {
       "sitemap_url": "https://middelfart.dk/Handlers/Sitemap.ashx",
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "middelfart-visible-date"
     },
     "note": "Fælles nyhedsside med emnefilter Pressemeddelelse; dækket af kommunens sitemap."
   },
@@ -960,7 +995,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Kun én fælles side ('nyheder og pressemeddelelser'); gammel dedikeret URL giver 404."
   },
@@ -1005,7 +1041,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Kun én fælles side 'Nyheder & presserum'."
   },
@@ -1080,7 +1117,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "ringkoebing-skjern-visible-date"
     },
     "note": "Fælles side, beskrevet som 'samlet nyhedsoversigt over pressemeddelelser'."
   },
@@ -1110,7 +1148,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/service-og-pressemeddelelser"
+      "url_prefix": "/service-og-pressemeddelelser",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "RETTET: www.rk.dk/nyheder/ gav 404. Kommunen har ingen selvstændig nyhedsside; service- og pressemeddelelser er det nærmeste. Begge sider indlæser listen med JavaScript."
   },
@@ -1140,7 +1179,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "rudersdal-visible-date"
     },
     "note": "Pressemeddelelser via eksternt Via Ritzau-presserum, linket fra rudersdal.dk/om-kommunen/presse."
   },
@@ -1170,7 +1210,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Fælles side; Presserum er kun pressekontakt/billeder/retningslinjer."
   },
@@ -1185,7 +1226,8 @@
     "enabled": true,
     "verified": false,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Presserum indeholder et pressemeddelelses-arkiv, adskilt fra generel nyhedsside. Presserum svarer, men det er uklart om siden er arkiv eller kun pressekontakt — bekræft manuelt."
   },
@@ -1195,12 +1237,12 @@
     "site_url": "https://skive.dk",
     "news_url": "https://skive.dk/nyheder/",
     "press_url": "",
-    "channel": "sitemap",
+    "channel": "feed",
     "source_type": "kun_nyheder",
     "enabled": true,
     "verified": true,
     "config": {
-      "sitemap_url": "https://skive.dk/sitemap.xml",
+      "feed_url": "https://skive.dk/rssFeed/RenderRssFeed/40484",
       "url_prefix": "/news"
     },
     "note": "Ingen separat pressemeddelelses-side fundet; artikler dækkes af sitemap under /news."
@@ -1216,7 +1258,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/da/nyheder"
+      "url_prefix": "/da/nyheder",
+      "published_date_profile": "slagelse-nuxt-news-date"
     },
     "note": "Fælles side, kan filtreres på Alle/Nyheder/Pressemeddelelser. Omdirigerer til /da/nyheder?limit=16."
   },
@@ -1246,7 +1289,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/aktuelt/nyheder"
+      "url_prefix": "/aktuelt/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side; presseside linker hertil. Separat presseside er kun kontakt/fotos."
   },
@@ -1256,12 +1300,13 @@
     "site_url": "https://soroe.dk",
     "news_url": "https://soroe.dk/om-soroe-kommune/nyheder",
     "press_url": "https://soroe.dk/om-soroe-kommune/nyheder",
-    "channel": "auto",
+    "channel": "sitemap",
     "source_type": "faelles",
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-soroe-kommune/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side; artikler mærket PRESSEMEDDELELSE eller NYHED."
   },
@@ -1276,7 +1321,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Presse-siden linker videre ('Gå til pressemeddelelser') til fælles nyhedsside."
   },
@@ -1291,7 +1337,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Fælles side; presseside bekræfter pressemeddelelser ligger som del af nyhederne."
   },
@@ -1353,7 +1400,8 @@
     "verified": true,
     "config": {
       "sitemap_url": "https://www.thisted.dk/Handlers/Sitemap.ashx",
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "thisted-visible-date"
     },
     "note": "Fælles side; pressemeddelelser udgives som nyheder og dækkes af kommunens sitemap."
   },
@@ -1383,7 +1431,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Presse-og-nyheder-sektion har kun pressekontakt/fotos, intet arkiv."
   },
@@ -1413,7 +1462,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/presserum/pressemeddelelser-og-nyheder"
+      "url_prefix": "/presserum/pressemeddelelser-og-nyheder",
+      "published_date_profile": "moliri-created-meta"
     },
     "note": "Fælles side med filtrering mellem Pressemeddelelse og Nyhed."
   },
@@ -1443,7 +1493,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Tidligere pressemeddelelse-arkiv giver nu 404; Presserum er kun kontaktinfo."
   },
@@ -1473,7 +1524,8 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/kommunen/nyheder"
+      "url_prefix": "/kommunen/nyheder",
+      "published_date_profile": "gopublic-data-date"
     },
     "note": "Presse-siden er kun kontakt/billedarkiv, intet arkiv over pressemeddelelser."
   }

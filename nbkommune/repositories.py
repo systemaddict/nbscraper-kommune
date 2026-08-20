@@ -38,6 +38,7 @@ INGEST_PRIORITY = {
     "changed": PRIORITY_CHANGED,
     "manual": PRIORITY_MANUAL,
     "recheck": PRIORITY_RECHECK,
+    "date-revalidation": PRIORITY_RECHECK,
     "backfill": PRIORITY_BACKFILL,
 }
 
@@ -188,7 +189,8 @@ def upsert_listed_article(conn: Connection, row: dict[str, Any]) -> None:
             kind = COALESCE(excluded.kind, article.kind),
             channel = excluded.channel,
             listing_hash = excluded.listing_hash,
-            raw_json = excluded.raw_json,
+            raw_json = CASE WHEN article.status = 'listed'
+                            THEN excluded.raw_json ELSE article.raw_json END,
             checked_at = excluded.checked_at
         """,
         {**row, "now": now_iso()},
@@ -196,7 +198,7 @@ def upsert_listed_article(conn: Connection, row: dict[str, Any]) -> None:
 
 
 def save_article_detail(conn: Connection, row: dict[str, Any], *,
-                        thin: bool) -> bool:
+                        thin: bool, clear_published_at: bool = False) -> bool:
     """Store extracted content. Caller commits. Returns True on real change.
 
     ``ingested_at`` moves **only** when ``detail_hash`` changes — that timestamp
@@ -205,10 +207,30 @@ def save_article_detail(conn: Connection, row: dict[str, Any], *,
     recheck. ``checked_at`` moves every time.
     """
     existing = conn.execute(
-        "SELECT detail_hash FROM article WHERE municipality_key = %s AND id = %s",
+        "SELECT detail_hash, published_at, provenance_json FROM article "
+        "WHERE municipality_key = %s AND id = %s",
         (row["municipality_key"], row["id"]),
     ).fetchone()
     changed = existing is None or existing["detail_hash"] != row["detail_hash"]
+
+    # A recheck may find a page temporarily missing metadata that was previously
+    # read from a trusted source. COALESCE already preserves the value; preserve
+    # its provenance as well so it cannot silently turn into an unexplained date.
+    # The repair path opts out for legacy guessed values and clears them if the
+    # stricter extractor cannot recover a trustworthy replacement.
+    if (existing and existing.get("published_at") and not row.get("published_at")
+            and not clear_published_at):
+        try:
+            old_provenance = json.loads(existing.get("provenance_json") or "{}")
+            new_provenance = json.loads(row.get("provenance_json") or "{}")
+        except (TypeError, json.JSONDecodeError):
+            old_provenance, new_provenance = {}, {}
+        old_source = old_provenance.get("published_at")
+        if old_source:
+            new_provenance["published_at"] = old_source
+            row = {**row, "provenance_json": json.dumps(
+                new_provenance, ensure_ascii=False
+            )}
     conn.execute(
         """
         UPDATE article SET
@@ -223,7 +245,9 @@ def save_article_detail(conn: Connection, row: dict[str, Any], *,
             categories_json = %(categories_json)s,
             lang = COALESCE(%(lang)s, lang),
             word_count = %(word_count)s,
-            published_at = COALESCE(%(published_at)s, published_at),
+            published_at = CASE WHEN %(clear_published_at)s
+                           THEN %(published_at)s
+                           ELSE COALESCE(%(published_at)s, published_at) END,
             updated_at = COALESCE(%(updated_at)s, updated_at),
             detail_hash = %(detail_hash)s,
             provenance_json = %(provenance_json)s,
@@ -235,7 +259,8 @@ def save_article_detail(conn: Connection, row: dict[str, Any], *,
             ingested_at = CASE WHEN %(changed)s THEN %(now)s ELSE ingested_at END
         WHERE municipality_key = %(municipality_key)s AND id = %(id)s
         """,
-        {**row, "thin": thin, "changed": changed, "now": now_iso()},
+        {**row, "thin": thin, "clear_published_at": clear_published_at,
+         "changed": changed, "now": now_iso()},
     )
     return changed
 
@@ -378,6 +403,34 @@ def article_stats(conn: Connection) -> list[dict]:
         GROUP BY m.key, m.name, m.channel, m.last_ok_at
         ORDER BY m.key
         """
+    ).fetchall()
+
+
+def legacy_date_articles(
+    conn: Connection, *, limit: int = 1000
+) -> list[dict]:
+    """Ingested rows carrying a legacy, imprecise provenance label.
+
+    Old releases used ``listing`` for both guessed HTML-card dates and real RSS
+    pubDate values. Reingest distinguishes them using the stored channel: HTML
+    guesses are revalidated or cleared, while feed dates are preserved and
+    relabelled ``feed``.
+    """
+    return conn.execute(
+        """
+        SELECT a.municipality_key, a.id, a.url, a.published_at,
+               json_extract(a.provenance_json, '$.published_at') AS date_source,
+               m.channel
+        FROM article a
+        JOIN municipality m ON m.key = a.municipality_key
+        WHERE a.status = 'ingested'
+          AND a.published_at IS NOT NULL
+          AND json_extract(a.provenance_json, '$.published_at')
+              IN ('listing', 'heuristic')
+        ORDER BY a.published_at DESC
+        LIMIT %s
+        """,
+        (limit,),
     ).fetchall()
 
 

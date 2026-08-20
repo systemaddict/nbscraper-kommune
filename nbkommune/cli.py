@@ -362,5 +362,47 @@ def backfill(
     conn.close()
 
 
+@app.command("revalidate-dates")
+def revalidate_dates(
+    limit: int = typer.Option(1000, help="Max legacy dates to inspect/enqueue."),
+    enqueue: bool = typer.Option(
+        False, "--enqueue", help="Queue revalidation; default is a dry run."
+    ),
+) -> None:
+    """Revalidate dates carrying the retired listing/heuristic labels.
+
+    The dry run is deliberate: this command is also the production repair
+    boundary. With ``--enqueue``, each row is re-fetched at paced priority; the
+    strict detail extractor replaces the date from JSON-LD/meta/a reviewed rule,
+    preserves an RSS pubDate, or clears it when no trustworthy publication
+    signal exists.
+    """
+    _setup_logging(False)
+    conn = db.connect(get_settings())
+    rows = repo.legacy_date_articles(conn, limit=limit)
+    by_channel: dict[str, int] = {}
+    for row in rows:
+        channel = row["channel"] or "unknown"
+        by_channel[channel] = by_channel.get(channel, 0) + 1
+    summary = ", ".join(f"{key}={value}" for key, value in sorted(by_channel.items()))
+    console.print(f"found {len(rows)} legacy date(s)" + (f" ({summary})" if summary else ""))
+    if not enqueue:
+        console.print("[yellow]dry run; add --enqueue after deployment validation[/yellow]")
+        conn.close()
+        return
+    queued = 0
+    for row in rows:
+        if repo.enqueue_ingest(
+            conn,
+            row["municipality_key"],
+            row["id"],
+            "date-revalidation",
+        ) is not None:
+            queued += 1
+    conn.commit()
+    console.print(f"[green]queued {queued} date revalidation task(s)[/green]")
+    conn.close()
+
+
 if __name__ == "__main__":
     app()

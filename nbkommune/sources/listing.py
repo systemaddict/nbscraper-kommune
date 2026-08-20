@@ -10,9 +10,9 @@ Used when a site has no feed and its sitemap is unusable. Two modes:
   whose last segment looks like an article slug. In the survey this found article
   links on 5 of 8 listing pages unaided; the other 3 need selectors or a browser.
 
-Publication dates found here are valuable out of proportion to their looks: for
-the many sites whose article pages expose only a "sidst opdateret" stamp, the
-listing row is the only place a real publication date appears at all.
+Publication dates from a reviewed ``date_selector`` are valuable: for sites
+whose article pages expose only a "sidst opdateret" stamp, the listing can be
+the sole publication source. Heuristic listing discovery never guesses dates.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ import re
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
-from bs4.element import Tag
+from bs4.element import NavigableString, Tag
 
 from nbkommune.dates import parse_danish_datetime
 from nbkommune.http import HttpClient
@@ -38,16 +38,6 @@ _SLUG = re.compile(r"[a-z0-9æøå]+(?:-[a-z0-9æøå]+){1,}$", re.I)
 _NOT_ARTICLE = re.compile(
     r"/(side|page|p)/\d+/?$|\.(pdf|jpg|jpeg|png|docx?|xlsx?)$|[?&]page=", re.I
 )
-
-# Nearby text that is a date. Danish listings render these as bare text next to
-# the headline, so the row's whole text is searched when no date selector is set.
-_DATE_IN_TEXT = re.compile(
-    r"\d{1,2}\.\s*(?:jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)[a-zæøå]*\.?\s*\d{4}"
-    r"|\d{4}-\d{2}-\d{2}"
-    r"|\d{1,2}[./-]\d{1,2}[./-]\d{4}",
-    re.I,
-)
-
 
 class ListingSource:
     """Lists articles by scraping one or more listing pages."""
@@ -94,7 +84,16 @@ class ListingSource:
             title = None
             if cfg.get("title_selector"):
                 el = row.select_one(cfg["title_selector"])
-                title = el.get_text(" ", strip=True) if el else None
+                if el:
+                    # Via Ritzau puts a timestamp/status in a nested <small>
+                    # inside the <h2>. Prefer the heading's own text nodes when
+                    # present so reviewed date markup cannot leak into title.
+                    direct = " ".join(
+                        str(child).strip()
+                        for child in el.children
+                        if isinstance(child, NavigableString) and str(child).strip()
+                    )
+                    title = direct or el.get_text(" ", strip=True)
             title = title or self._title_from(link, row)
             out.append(ListedArticle(
                 url=url, title=title,
@@ -114,28 +113,23 @@ class ListingSource:
 
     @staticmethod
     def _date(row: Tag, selector: str | None) -> str | None:
-        """A date from the configured selector, else any date-shaped text in the row.
+        """A publication date from an explicitly configured selector.
 
-        Checks ``datetime`` and ``content`` attributes before the rendered text:
-        a ``<time datetime>`` is unambiguous where "18/08" is not.
+        A generic listing card frequently mentions an event date or deadline.
+        Treating any date-shaped text — or even an unlabelled ``<time>`` — as
+        publication time silently corrupts the field, so unconfigured targets
+        deliberately return no date here.
         """
+        if not selector:
+            return None
         candidates: list[str] = []
-        if selector:
-            el = row.select_one(selector)
-            if el is not None:
-                for attr in ("datetime", "content", "data-date"):
-                    value = el.get(attr)
-                    if isinstance(value, str) and value.strip():
-                        candidates.append(value)
-                candidates.append(el.get_text(" ", strip=True))
-        else:
-            for time_el in row.find_all("time"):
-                value = time_el.get("datetime")
-                candidates.append(value if isinstance(value, str)
-                                  else time_el.get_text(" ", strip=True))
-            match = _DATE_IN_TEXT.search(row.get_text(" ", strip=True))
-            if match:
-                candidates.append(match.group(0))
+        el = row.select_one(selector)
+        if el is not None:
+            for attr in ("datetime", "content", "data-date"):
+                value = el.get(attr)
+                if isinstance(value, str) and value.strip():
+                    candidates.append(value)
+            candidates.append(el.get_text(" ", strip=True))
         for candidate in candidates:
             parsed = parse_danish_datetime(candidate)
             if parsed:

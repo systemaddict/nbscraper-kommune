@@ -4,14 +4,14 @@ from __future__ import annotations
 import httpx
 import respx
 
-from nbkommune.crawl import _decide
+from nbkommune.crawl import _decide, _legacy_published_is_untrusted
 from nbkommune.http import HttpClient
 from nbkommune.records import ListedArticle
 from nbkommune.settings import Settings
 from nbkommune.sources.feed import FeedSource
 from nbkommune.sources.listing import ListingSource
 from nbkommune.sources.sitemap import SitemapSource
-from nbkommune.targets import Target
+from nbkommune.targets import Target, registry
 
 
 def _settings(**kw) -> Settings:
@@ -221,15 +221,21 @@ class TestListingSource:
         article = next(a for a in self._found() if a.url.endswith("cykelsti-indviet"))
         assert article.title == "Cykelsti indviet"
 
-    def test_time_element_supplies_the_publication_date(self):
+    def test_unconfigured_time_is_not_assumed_to_be_publication_date(self):
         article = next(a for a in self._found() if a.url.endswith("skole-er-aabnet"))
-        assert article.published_at == "2026-08-14T07:00:00+00:00"
+        assert article.published_at is None
 
-    def test_bare_danish_date_text_in_the_row_is_read(self):
-        """Many of these listings render the date as plain text next to the
-        headline — and it is often the only publication date that exists."""
+    def test_bare_date_text_is_not_assumed_to_be_publication_date(self):
         article = next(a for a in self._found() if a.url.endswith("cykelsti-indviet"))
-        assert article.published_at == "2026-08-17T22:00:00+00:00"
+        assert article.published_at is None
+
+    def test_configured_date_selector_is_used(self):
+        target = _target(config={"item_selector": "article.teaser",
+                                 "link_selector": "a",
+                                 "date_selector": "time"})
+        article = next(a for a in self._found(target)
+                       if a.url.endswith("skole-er-aabnet"))
+        assert article.published_at == "2026-08-14T07:00:00+00:00"
 
     def test_configured_selectors_are_used(self):
         target = _target(config={"item_selector": "article.teaser",
@@ -238,6 +244,26 @@ class TestListingSource:
         found = self._found(target)
         assert found[0].title == "Skole er åbnet"
         assert found[0].raw["mode"] == "configured"
+
+    def test_nested_date_is_not_appended_to_configured_title(self):
+        html = """<article class='teaser'><a href='/nyheder/en-rigtig-nyhed'>
+          <h2>En rigtig nyhed<small>18.8.2026 | Pressemeddelelse</small></h2>
+        </a></article>"""
+        target = _target(config={
+            "item_selector": "article.teaser",
+            "link_selector": "a",
+            "title_selector": "h2",
+            "date_selector": "h2 > small",
+        })
+        source = ListingSource(
+            target,
+            None,
+            urls=["https://testby.dk/nyheder"],
+            prefetched={"https://testby.dk/nyheder": html},
+        )
+        article = source.list_articles()[0]
+        assert article.title == "En rigtig nyhed"
+        assert article.published_at == "2026-08-17T22:00:00+00:00"
 
     def test_a_selector_that_stops_matching_falls_back(self):
         """The most likely way this scraper goes blind is a site changing its
@@ -276,6 +302,32 @@ class TestDecide:
     def test_tombstoned_article_that_reappears_is_changed(self):
         """A site that 404s during a migration must recover by itself."""
         assert _decide(self._row(status="gone"), self._listed()) == "changed"
+
+
+class TestLegacyDateTrust:
+    def test_old_html_listing_date_requires_revalidation(self):
+        assert _legacy_published_is_untrusted({
+            "channel": "listing",
+            "published_at": "2026-08-18T10:00:00+00:00",
+            "provenance_json": '{"published_at":"listing"}',
+            "raw_json": "{}",
+        })
+
+    def test_old_feed_date_is_kept_and_migrated(self):
+        assert not _legacy_published_is_untrusted({
+            "channel": "feed",
+            "published_at": "2026-08-18T10:00:00+00:00",
+            "provenance_json": '{"published_at":"listing"}',
+            "raw_json": "{}",
+        })
+
+    def test_reviewed_configured_listing_date_is_trusted(self):
+        assert not _legacy_published_is_untrusted({
+            "channel": "listing",
+            "published_at": "2026-08-18T10:00:00+00:00",
+            "provenance_json": '{"published_at":"listing:configured"}',
+            "raw_json": "{}",
+        })
 
 
 ATOM_UPDATED_ONLY = """<?xml version="1.0" encoding="utf-8"?>
@@ -319,3 +371,51 @@ class TestTargetUrlPreservation:
         t = Target(key="k", name="K", news_url="https://k.dk/nyheder/",
                    press_url="https://k.dk/nyheder/").normalised()
         assert t.listing_urls == ["https://k.dk/nyheder/"]
+
+
+class TestPublishedDateProfiles:
+    def test_reviewed_profile_expands_to_rules(self):
+        t = _target(config={"published_date_profile": "gopublic-data-date"})
+        assert t.published_date_rules == [{
+            "name": "gopublic-data-date",
+            "selector": ".news-page > span.datetime.datetime-to-locale[data-date]",
+            "attribute": "data-date",
+        }]
+
+    def test_unknown_profile_fails_closed(self):
+        t = _target(config={"published_date_profile": "does-not-exist"})
+        assert t.published_date_rules == []
+
+    def test_registry_profiles_are_assigned_only_to_reviewed_sites(self, tmp_path):
+        settings = _settings(targets_file=tmp_path / "no-overrides.json")
+        reg = registry(settings)
+        expected = {
+            "gopublic-data-date": {
+                "alleroed", "bornholm", "glostrup", "gribskov", "halsnaes",
+                "helsingoer", "herning", "hjoerring", "holbaek", "kalundborg",
+                "lemvig", "norddjurs", "odder", "roedovre", "solroed", "soroe",
+                "stevns", "struer", "vallensbaek", "vesthimmerland", "vordingborg",
+            },
+            "moliri-created-meta": {
+                "aeroe", "assens", "broenderslev", "egedal", "fredensborg",
+                "furesoe", "hoeje-taastrup", "hoersholm", "kerteminde", "koege",
+                "kolding", "laesoe", "langeland", "lolland", "silkeborg",
+                "skanderborg", "vejen",
+            },
+            "favrskov-visible-date": {"favrskov"},
+            "holstebro-visible-date": {"holstebro"},
+            "hvidovre-visible-date": {"hvidovre"},
+            "ishoej-visible-date": {"ishoej"},
+            "koebenhavn-publication-date": {"koebenhavn"},
+            "middelfart-visible-date": {"middelfart"},
+            "ringkoebing-skjern-visible-date": {"ringkoebing-skjern"},
+            "rudersdal-visible-date": {"rudersdal"},
+            "slagelse-nuxt-news-date": {"slagelse"},
+            "thisted-visible-date": {"thisted"},
+        }
+        actual: dict[str, set[str]] = {}
+        for key, target in reg.items():
+            profile = target.config.get("published_date_profile")
+            if profile:
+                actual.setdefault(profile, set()).add(key)
+        assert actual == expected

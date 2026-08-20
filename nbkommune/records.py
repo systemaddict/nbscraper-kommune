@@ -165,10 +165,10 @@ class ArticleDetail:
     """The extracted article itself.
 
     ``provenance`` records which extraction layer produced each field
-    (``jsonld`` / ``meta`` / ``heuristic`` / ``listing``). That is not
-    decoration: with 98 heterogeneous sites and no common CMS, the only way to
-    find the ones whose extraction has silently degraded is to be able to ask
-    "which sites are still falling through to the heuristic layer?".
+    (``jsonld`` / ``meta:*`` / ``rule:*`` / ``feed`` /
+    ``listing:configured`` / ``heuristic``). That is not decoration: with 98
+    heterogeneous sites and no common CMS, the only way to find the ones whose
+    extraction has silently degraded is to ask which layer supplied each field.
     """
 
     url: str

@@ -21,6 +21,11 @@ from zoneinfo import ZoneInfo
 
 DK = ZoneInfo("Europe/Copenhagen")
 
+# .NET/Umbraco commonly serialises an unset DateTime as year 0001. Municipal
+# news can be old, but nothing in this corpus predates the modern web; accepting
+# a framework sentinel as a real publication date is silent data corruption.
+_MIN_REAL_YEAR = 1900
+
 _MONTHS = {
     "januar": 1, "jan": 1,
     "februar": 2, "feb": 2,
@@ -66,7 +71,9 @@ _ISO_LOOSE = re.compile(
 # deliberately narrow: real ISO fractional seconds ("15:00:00.000+02:00") have a
 # colon after the hour and must not be touched.
 _DOTTED_TIME = re.compile(
-    r"^(\d{4}-\d{2}-\d{2})[T\s]+(\d{1,2})\.(\d{2})(?:\.(\d{2}))?\s*$"
+    r"^(\d{4}-\d{2}-\d{2})[T\s]+(\d{1,2})\.(\d{2})(?:\.(\d{2}))?"
+    r"(Z|[+-]\d{2}:?\d{2})?\s*$",
+    re.I,
 )
 
 
@@ -75,8 +82,8 @@ def _normalise_dotted(raw: str) -> str:
     m = _DOTTED_TIME.match(raw)
     if not m:
         return raw
-    day, hh, mm, ss = m.groups()
-    return f"{day} {int(hh):02d}:{mm}:{ss or '00'}"
+    day, hh, mm, ss, zone = m.groups()
+    return f"{day} {int(hh):02d}:{mm}:{ss or '00'}{zone or ''}"
 
 
 def _to_utc(dt: datetime) -> str:
@@ -93,6 +100,8 @@ def _to_utc(dt: datetime) -> str:
 
 def _build(year: int, month: int, day: int,
            hh: str | None = None, mm: str | None = None, ss: str | None = None) -> str | None:
+    if year < _MIN_REAL_YEAR:
+        return None
     try:
         # Built naive on purpose: a date scraped off a Danish municipal page has
         # no stated zone, and `_to_utc` attaches Europe/Copenhagen. Constructing
@@ -130,9 +139,12 @@ def parse_danish_datetime(value: str | None) -> str | None:
     #    is the only form that carries a trustworthy timezone. Dotted times are
     #    repaired first; see `_normalise_dotted` for why that is not optional.
     try:
-        return _to_utc(datetime.fromisoformat(
+        parsed = datetime.fromisoformat(
             _normalise_dotted(raw).replace("Z", "+00:00")
-        ))
+        )
+        if parsed.year < _MIN_REAL_YEAR:
+            return None
+        return _to_utc(parsed)
     except (ValueError, OverflowError):
         pass
 

@@ -27,6 +27,39 @@ from nbkommune.targets import Target
 logger = logging.getLogger(__name__)
 
 
+def _json_object(value) -> dict:
+    """Decode a DB JSON value defensively; corrupt diagnostics must not stop ingest."""
+    if isinstance(value, dict):
+        return value
+    try:
+        decoded = json.loads(value or "{}")
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return decoded if isinstance(decoded, dict) else {}
+
+
+def _legacy_published_is_untrusted(article: dict) -> bool:
+    """Whether a stored date came from a pre-integrity guessing path.
+
+    Old releases labelled every discovery date as ``listing`` — even RSS. A
+    feed channel is therefore exempt and is migrated to ``feed`` on reingest.
+    A real HTML listing or heuristic date is revalidated from the detail page;
+    if no strict signal exists, unknown is preferable to a plausible bad date.
+    """
+    source = _json_object(article.get("provenance_json")).get("published_at")
+    channel = article.get("channel")
+    if channel == "feed":
+        return False
+    if source:
+        return source == "heuristic" or source == "listing"
+    listing_raw = _json_object(article.get("raw_json"))
+    return bool(
+        article.get("published_at")
+        and channel == "listing"
+        and listing_raw.get("mode") != "configured"
+    )
+
+
 @dataclass
 class DiscoverStats:
     target: str
@@ -203,18 +236,33 @@ def ingest_article(conn, target: Target, http: HttpClient, article_id: str,
         logger.info("%s: robots.txt disallows %s — leaving it listed", target.key, url)
         return False
 
+    provenance = _json_object(article.get("provenance_json"))
+    listing_raw = _json_object(article.get("raw_json"))
+    published_source = provenance.get("published_at")
+    # New rows still contain the actual discovery record. On later rechecks,
+    # pass a stored date back as discovery evidence only when its channel is
+    # independently trustworthy; detail-page JSON-LD/meta/rules are re-read.
+    use_discovery_date = (
+        article["channel"] == "feed"
+        or published_source == "listing:configured"
+        or (article["status"] == "listed"
+            and listing_raw.get("mode") == "configured")
+    )
     listed = ListedArticle(
         url=url,
         title=article["title"],
         summary=article["summary"],
-        published_at=article["published_at"].isoformat() if article["published_at"] else None,
+        published_at=(article["published_at"].isoformat()
+                      if article["published_at"] and use_discovery_date else None),
         updated_at=article["updated_at"].isoformat() if article["updated_at"] else None,
         kind=article["kind"] or "ukendt",
         channel=article["channel"] or "listing",
+        raw=listing_raw if article["status"] == "listed" else {},
     )
     detail = extract_article(
         html, final_url, listed=listed,
         body_selector=target.config.get("body_selector"),
+        published_date_rules=target.published_date_rules,
         min_body_chars=settings.min_body_chars,
     )
     # The article's own categories can reclassify it — on a `faelles` site the
@@ -240,7 +288,10 @@ def ingest_article(conn, target: Target, http: HttpClient, article_id: str,
     # would match no row and silently store nothing while reporting success.
     # The redirected URL is still recorded, as `url` and `canonical_url`.
     row["id"] = article_id
-    changed = repo.save_article_detail(conn, row, thin=thin)
+    changed = repo.save_article_detail(
+        conn, row, thin=thin,
+        clear_published_at=_legacy_published_is_untrusted(article),
+    )
     repo.set_article_kind(conn, target.key, article_id, kind)
     conn.commit()
 

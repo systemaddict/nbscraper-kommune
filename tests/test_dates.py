@@ -24,6 +24,10 @@ class TestDottedTimeTrap:
     def test_dotted_time_with_seconds(self):
         assert parse_danish_datetime("2026-08-18 06.28.45") == "2026-08-18T04:28:45+00:00"
 
+    def test_dotted_time_preserves_explicit_utc_zone(self):
+        assert (parse_danish_datetime("2026-05-04T13.20.20Z")
+                == "2026-05-04T13:20:20+00:00")
+
     def test_single_digit_hour(self):
         assert parse_danish_datetime("2026-08-18 6.05") == "2026-08-18T04:05:00+00:00"
 
@@ -53,7 +57,8 @@ class TestFormats:
 
     @pytest.mark.parametrize("raw", ["", None, "ingen dato her", "31. februar 2026",
                                      "42. august 2026",
-                                     "Mon, 01 Jan 0001 00:00:00 +0000"])
+                                     "Mon, 01 Jan 0001 00:00:00 +0000",
+                                     "0001-01-01T00:00:00Z"])
     def test_unparseable_returns_none(self, raw):
         assert parse_danish_datetime(raw) is None
 

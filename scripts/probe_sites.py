@@ -66,6 +66,7 @@ def probe_one(target, http, settings) -> dict:
         html, final = http.get_text(newest.url)
         detail = extract_article(html, final, listed=newest,
                                  body_selector=target.config.get("body_selector"),
+                                 published_date_rules=target.published_date_rules,
                                  min_body_chars=settings.min_body_chars)
     except Exception as exc:
         out["status"] = "extract_failed"

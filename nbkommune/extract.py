@@ -17,12 +17,14 @@ selector that works. Instead each field is resolved through an ordered set of
                    it won on 2 of 5 sampled pages and lost badly on Jammerbugt
                    (139 words vs 366 — it dropped over half the article). So it
                    is a *candidate*, not the authority.
-4. ``heuristic``  — ``<h1>``, ``<time datetime>``, and the densest low-link
-                   container. Always available, and on this corpus usually the
-                   better of the two DOM extractors.
+4. ``heuristic``  — ``<h1>`` and the densest low-link container. DOM date
+                   candidates are diagnostics only until a target opts into an
+                   exact selector. On this corpus this layer is usually the
+                   better of the two DOM body extractors.
 5. ``listing``   — whatever the feed/sitemap/listing row already told us. Last
-                   resort for title, but the *best* source of ``published_at``
-                   on a site whose article pages carry no date at all.
+                   resort for title. A publication date is accepted only from
+                   a feed or a reviewed listing selector, never from arbitrary
+                   date-shaped card text.
 
 For the **body** specifically the rule is borrowed from the SerpScraper4
 extension, which solved the same problem for news articles: a schema.org
@@ -58,8 +60,8 @@ logger = logging.getLogger(__name__)
 # Elements that are never article content. Removed before any text extraction so
 # a navigation menu can't win the "densest container" contest.
 _STRIP_TAGS = (
-    "script", "style", "noscript", "nav", "header", "footer", "aside", "form",
-    "iframe", "svg", "button", "template", "figure",
+    "script", "style", "noscript", "nav", "header", "footer", "aside",
+    "iframe", "svg", "button", "template",
 )
 
 # Class/id fragments that mark chrome on these CMSes. Matched case-insensitively
@@ -71,6 +73,12 @@ _STRIP_PATTERN = re.compile(
     r"|newsletter|nyhedsbrev|subscribe|banner|toolbar|accessibility|tilgaengelig",
     re.I,
 )
+
+# Structured contact cards sometimes sit inside the page's ``<article>`` even
+# though they are shared CMS chrome. Unlike a broad class match for "contact"
+# (which could remove genuine prose), schema.org LocalBusiness is an explicit
+# signal that the block describes the office, not the news item.
+_STRIP_ITEMTYPE_PATTERN = re.compile(r"(?:schema\.org/)?LocalBusiness\b", re.I)
 
 # Containers that plausibly hold the article body, best first.
 _BODY_SELECTORS = (
@@ -84,22 +92,28 @@ _BODY_SELECTORS = (
 # Block elements whose text forms the body, in document order.
 _BLOCK_TAGS = ("p", "h2", "h3", "h4", "li", "blockquote", "dd", "dt")
 
-# Meta names/properties carrying a publication time, best first. `cmspageupdated`
-# is last and deliberately: it is a *modified* stamp, so it is only used when
-# nothing states a real publication date.
+# Explicit meta names/properties carrying a publication time, best first.
+# Generic ``name=date`` is intentionally excluded: event pages use it for the
+# event date, and that is not publication metadata.
 _PUBLISHED_META = (
     ("property", "article:published_time"),
     ("name", "article:published_time"),
     ("property", "og:article:published_time"),
+    ("property", "og:published_time"),
+    ("property", "og:pageDate"),
+    ("itemprop", "datePublished"),
+    ("name", "datePublished"),
     ("name", "publish-date"),
     ("name", "publishdate"),
     ("name", "pubdate"),
-    ("name", "date"),
+    ("name", "page_date"),
     ("name", "dcterms.created"),
     ("name", "page:date"),
 )
 _MODIFIED_META = (
     ("property", "article:modified_time"),
+    ("property", "og:updated_time"),
+    ("property", "og:modified_time"),
     ("name", "article:modified_time"),
     ("name", "last-modified"),
     ("name", "dcterms.modified"),
@@ -127,7 +141,23 @@ _LD_TRUNCATION_RATIO = 1.5
 # general news. Used only when the site does not label the item itself.
 _PRESS_MARKERS = re.compile(r"presse|pressemeddel|press-release|pressrelease", re.I)
 
-
+# DOM publication dates are not standardised, but their semantics repeat across
+# CMSes. Candidates gain confidence from schema attributes, publication labels
+# and proximity to the article heading. Event dates in the body lack those
+# signals and stay below the acceptance threshold.
+_PUBLISHED_LABEL = re.compile(
+    r"\b(publiceret|udgivet|offentliggjort|oprettet|posted|published)\b", re.I
+)
+_MODIFIED_LABEL = re.compile(
+    r"\b(opdateret|ændret|redigeret|modified|updated|lastmod)\b", re.I
+)
+_DATE_SEMANTIC = re.compile(r"date|dato|datetime|publish|udgiv|offentliggj", re.I)
+_PUBLISHED_SEMANTIC = re.compile(r"datepublished|publish|udgiv|offentliggj", re.I)
+_DOM_DATE_ATTRS = (
+    "datetime", "data-date", "data-datetime", "data-published",
+    "data-publish-date", "data-publication-date",
+)
+_DOM_DATE_MIN_SCORE = 100
 # ── helpers ──────────────────────────────────────────────────────────────────
 # A chrome-looking wrapper that holds most of the page's text is not chrome —
 # it is a badly-named layout div wrapping the article. Skanderborg serves the
@@ -162,11 +192,11 @@ def _clean_soup(html: str) -> BeautifulSoup:
     total = len(soup.get_text(" ", strip=True)) or 1
     limit = total * _STRIP_MAX_TEXT_SHARE
 
-    def strip_matching(tags, value_of) -> None:
+    def strip_matching(tags, value_of, pattern: re.Pattern = _STRIP_PATTERN) -> None:
         for tag in tags:
             if tag.decomposed or tag.name in _NEVER_STRIP:
                 continue
-            if not _STRIP_PATTERN.search(value_of(tag)):
+            if not pattern.search(value_of(tag)):
                 continue
             if len(tag.get_text(" ", strip=True)) > limit:
                 continue          # too much of the page to be chrome
@@ -176,6 +206,9 @@ def _clean_soup(html: str) -> BeautifulSoup:
                    lambda t: " ".join(t.get("class") or []))
     strip_matching(soup.find_all(attrs={"id": True}),
                    lambda t: str(t.get("id") or ""))
+    strip_matching(soup.find_all(attrs={"itemtype": True}),
+                   lambda t: str(t.get("itemtype") or ""),
+                   _STRIP_ITEMTYPE_PATTERN)
 
     # `hidden` and aria-hidden content is invisible to a reader, so it is not
     # body text either — several sites ship a hidden print variant of the page,
@@ -463,11 +496,13 @@ def _from_meta(soup: BeautifulSoup, base_url: str) -> dict[str, Any]:
         parsed = parse_danish_datetime(meta(attr, name))
         if parsed:
             out["published_at"] = parsed
+            out["_published_how"] = f"meta:{name}"
             break
     for attr, name in _MODIFIED_META:
         parsed = parse_danish_datetime(meta(attr, name))
         if parsed:
             out["updated_at"] = parsed
+            out["_updated_how"] = f"meta:{name}"
             break
 
     canonical = soup.find("link", attrs={"rel": re.compile("^canonical$", re.I)})
@@ -480,6 +515,232 @@ def _from_meta(soup: BeautifulSoup, base_url: str) -> dict[str, Any]:
     if cats:
         out["categories"] = cats
     return out
+
+
+def _json_values_for_key(value: Any, wanted: str) -> list[str]:
+    """Find one explicitly configured key in a component's JSON model."""
+    found: list[str] = []
+    stack: list[Any] = [value]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            for key, child in node.items():
+                if str(key).casefold() == wanted.casefold():
+                    text = _text_of(child)
+                    if text:
+                        found.append(text)
+                if isinstance(child, (dict, list)):
+                    stack.append(child)
+    return found
+
+
+def _from_published_date_rules(
+    soup: BeautifulSoup,
+    html: str,
+    rules: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Apply target-owned publication-date rules without guessing.
+
+    A rule is deliberately small and inspectable:
+
+    - ``selector`` + optional ``attribute`` reads a DOM/meta value;
+    - ``json_key`` decodes the selected attribute before reading that exact key;
+    - ``pattern`` reads the first capture group from the raw document.
+
+    A rule is accepted only when every parseable match agrees on one date. If
+    markup changes and a selector starts matching two different dates, the field
+    stays empty and the diagnostics explain why. That is safer than silently
+    promoting an event or modification date to publication time.
+    """
+    diagnostics: list[dict[str, Any]] = []
+    for position, rule in enumerate(rules or []):
+        name = str(rule.get("name") or f"rule-{position + 1}")
+        raw_values: list[str] = []
+        selector = rule.get("selector")
+        pattern = rule.get("pattern")
+        if isinstance(selector, str) and selector:
+            try:
+                matches = soup.select(selector)
+            except Exception as exc:
+                diagnostics.append({"rule": name, "status": "invalid-selector",
+                                    "error": type(exc).__name__})
+                continue
+            attribute = rule.get("attribute")
+            json_key = rule.get("json_key")
+            for match in matches:
+                value: Any = (match.get(attribute) if isinstance(attribute, str)
+                              else match.get_text(" ", strip=True))
+                if not isinstance(value, str) or not value.strip():
+                    continue
+                if isinstance(json_key, str) and json_key:
+                    try:
+                        raw_values.extend(_json_values_for_key(json.loads(value), json_key))
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                else:
+                    raw_values.append(value.strip())
+        elif isinstance(pattern, str) and pattern:
+            try:
+                raw_values.extend(re.findall(pattern, html, flags=re.I))
+            except re.error as exc:
+                diagnostics.append({"rule": name, "status": "invalid-pattern",
+                                    "error": str(exc)[:120]})
+                continue
+        else:
+            diagnostics.append({"rule": name, "status": "invalid-rule"})
+            continue
+
+        parsed = {date for value in raw_values
+                  if (date := parse_danish_datetime(value))}
+        status = "matched" if len(parsed) == 1 else ("ambiguous" if parsed else "no-date")
+        diagnostics.append({
+            "rule": name,
+            "status": status,
+            "matches": len(raw_values),
+            "dates": sorted(parsed),
+        })
+        if len(parsed) == 1:
+            return {
+                "published_at": next(iter(parsed)),
+                "_published_how": f"rule:{name}",
+                "_diagnostics": diagnostics,
+            }
+    return {"_diagnostics": diagnostics} if diagnostics else {}
+
+
+def _semantic_text(tag: Tag) -> str:
+    """Class/id/schema strings that explain what a DOM element represents."""
+    values: list[str] = [tag.name or ""]
+    for name in ("class", "id", "itemprop", "property", "name", "aria-label"):
+        value = tag.get(name)
+        if isinstance(value, list):
+            values.extend(str(part) for part in value)
+        elif isinstance(value, str):
+            values.append(value)
+    return " ".join(values)
+
+
+def _nearby_text(tag: Tag) -> str:
+    """Small local context only; never scan the whole article for a label."""
+    parts: list[str] = []
+    sibling = tag.find_previous_sibling()
+    for _ in range(2):
+        if sibling is None:
+            break
+        text = sibling.get_text(" ", strip=True)
+        if text:
+            parts.insert(0, text)
+        sibling = sibling.find_previous_sibling()
+    own = tag.get_text(" ", strip=True)
+    if own:
+        parts.append(own)
+    parent = tag.parent
+    if isinstance(parent, Tag):
+        parent_text = parent.get_text(" ", strip=True)
+        if len(parent_text) <= 180:
+            parts.append(parent_text)
+    return re.sub(r"\s+", " ", " ".join(parts)).strip()
+
+
+def _dom_published_date(soup: BeautifulSoup) -> tuple[str | None, str | None, list[dict]]:
+    """Find a publication date from generic, scored semantic evidence.
+
+    Parsing every date-shaped string is unsafe: articles routinely contain
+    meeting dates, deadlines and event schedules. Explicit datePublished
+    semantics, a nearby publication label or placement beside the h1 are the
+    evidence that turns a date-shaped value into a publication date.
+    """
+    h1 = soup.find("h1")
+    near_heading: set[int] = set()
+    if h1 is not None:
+        # The publication stamp belongs to the article header, before prose
+        # starts. A fixed "next N tags" window also includes short article
+        # bodies and can mistake an event date for publication.
+        for tag in h1.find_all_next(limit=60):
+            if tag.name in {"p", "h2", "h3", "h4", "blockquote"}:
+                break
+            near_heading.add(id(tag))
+
+    candidates: list[dict[str, Any]] = []
+    for tag in soup.find_all(True):
+        if tag.name in {"html", "head", "body", "script", "style"}:
+            continue
+        semantic = _semantic_text(tag)
+        context = _nearby_text(tag)
+        values: list[tuple[str, str]] = []
+        for attr in _DOM_DATE_ATTRS:
+            value = tag.get(attr)
+            if isinstance(value, str) and value.strip():
+                values.append((attr, value.strip()))
+
+        itemprop = str(tag.get("itemprop") or "")
+        if _PUBLISHED_SEMANTIC.search(itemprop):
+            value = tag.get("content")
+            if isinstance(value, str) and value.strip():
+                values.append(("content", value.strip()))
+
+        # A visible date is only eligible on a date-named element or close to
+        # the article heading. This captures `<span class="date">` while a date
+        # in an ordinary article paragraph remains ineligible.
+        visible = tag.get_text(" ", strip=True)
+        if visible and (_DATE_SEMANTIC.search(semantic) or id(tag) in near_heading):
+            values.append(("text", visible))
+
+        seen_values: set[tuple[str, str]] = set()
+        for source, value in values:
+            if (source, value) in seen_values:
+                continue
+            seen_values.add((source, value))
+            parsed = parse_danish_datetime(value)
+            if not parsed:
+                continue
+
+            score = 0
+            evidence: list[str] = []
+            if _PUBLISHED_SEMANTIC.search(itemprop):
+                score += 140
+                evidence.append("datePublished")
+            if _PUBLISHED_SEMANTIC.search(semantic):
+                score += 90
+                evidence.append("published-semantic")
+            if _PUBLISHED_LABEL.search(context):
+                score += 100
+                evidence.append("published-label")
+            if source.startswith("data-publish") or source == "data-publication-date":
+                score += 90
+                evidence.append(source)
+            elif source in {"data-date", "data-datetime", "datetime"}:
+                score += 55
+                evidence.append(source)
+            if tag.name == "time":
+                score += 20
+                evidence.append("time")
+            if _DATE_SEMANTIC.search(semantic):
+                score += 50
+                evidence.append("date-semantic")
+            if id(tag) in near_heading:
+                score += 60
+                evidence.append("near-h1")
+            if _MODIFIED_LABEL.search(f"{semantic} {context}"):
+                score -= 160
+                evidence.append("modified-label")
+
+            candidates.append({
+                "value": parsed,
+                "score": score,
+                "source": source,
+                "tag": tag.name,
+                "evidence": evidence,
+            })
+
+    candidates.sort(key=lambda item: item["score"], reverse=True)
+    compact = candidates[:8]
+    if not compact or compact[0]["score"] < _DOM_DATE_MIN_SCORE:
+        return None, None, compact
+    winner = compact[0]
+    return winner["value"], f"dom:{winner['source']}", compact
 
 
 def _from_heuristic(soup: BeautifulSoup, base_url: str, *,
@@ -506,23 +767,25 @@ def _from_heuristic(soup: BeautifulSoup, base_url: str, *,
         # social-card fallback — but only when og:image is absent, decided by
         # the merge order, not here.
         img = container.find("img")
+        if img is None:
+            # Hero images are often a sibling of `.rich-text`, not inside it.
+            # Walk only as far as the closest ancestor that also owns the h1;
+            # this reaches the article shell without drifting into site chrome.
+            for parent in container.parents:
+                if not isinstance(parent, Tag) or parent.name in {"body", "html"}:
+                    break
+                if parent.find("h1") is not None:
+                    img = parent.find("img")
+                    break
         if img is not None and isinstance(img.get("src"), str):
             out["image_url"] = urljoin(base_url, img["src"])
 
-    # A <time datetime> attribute is machine-readable; its rendered text is the
-    # fallback. Two of them usually means published + modified, in that order.
-    times: list[str] = []
-    for tag in soup.find_all("time"):
-        value = tag.get("datetime")
-        parsed = parse_danish_datetime(
-            value if isinstance(value, str) else tag.get_text(" ", strip=True)
-        )
-        if parsed and parsed not in times:
-            times.append(parsed)
-    if times:
-        out["published_at"] = times[0]
-        if len(times) > 1:
-            out["updated_at"] = times[1]
+    # DOM date scoring is diagnostic only. A target must opt into the exact
+    # selector/attribute through `published_date_rules` before a DOM value can
+    # be stored as a publication date.
+    _published, _how, candidates = _dom_published_date(soup)
+    if candidates:
+        out["_date_candidates"] = candidates
     return out
 
 
@@ -651,6 +914,7 @@ def extract_article(
     *,
     listed: ListedArticle | None = None,
     body_selector: str | None = None,
+    published_date_rules: list[dict[str, Any]] | None = None,
     min_body_chars: int = 200,
 ) -> ArticleDetail:
     """Extract one article, resolving each field through the layer order.
@@ -665,6 +929,7 @@ def extract_article(
     document = BeautifulSoup(html, "lxml")
     jsonld = _from_jsonld(document, url)
     meta = _from_meta(document, url)
+    date_rule = _from_published_date_rules(document, html, published_date_rules)
     heuristic = _from_heuristic(
         _clean_soup(html), url,
         body_selector=body_selector, min_body_chars=min_body_chars,
@@ -680,7 +945,8 @@ def extract_article(
         }
 
     layers = [
-        ("jsonld", jsonld), ("meta", meta), ("heuristic", heuristic),
+        ("jsonld", jsonld), ("meta", meta), ("date_rule", date_rule),
+        ("heuristic", heuristic),
         ("readability", readability), ("listing", from_listing),
     ]
     provenance: dict[str, str] = {}
@@ -691,24 +957,42 @@ def extract_article(
     if body_via:
         provenance["body_text"] = body_via
 
-    # Published date: prefer whatever a *listing* stated over a page-level
-    # `cmspageupdated`-style modified stamp. The listing row on these sites is
-    # generated from the CMS publish date, which is exactly what we want, while
-    # the article page frequently only exposes "sidst opdateret".
-    published_layers = [("jsonld", jsonld), ("meta", meta)]
+    # Published date: standard detail metadata wins, followed by a target-owned
+    # proprietary detail rule, then a date the discovery channel explicitly
+    # stated (RSS or a reviewed listing selector). Generic DOM candidates never
+    # enter this list.
+    published_layers = [("jsonld", jsonld), ("meta", meta), ("date_rule", date_rule)]
     if listed is not None and listed.published_at:
-        published_layers.insert(1, ("listing", from_listing))
-    published_layers.append(("heuristic", heuristic))
-
+        # Keep the discovery contract visible in provenance. Historically every
+        # ListedArticle was labelled "listing", including RSS pubDate values;
+        # that made it impossible to distinguish an authoritative feed date
+        # from a guessed HTML-card date during repair work.
+        if listed.channel == "feed":
+            listed_date_source = "feed"
+        elif listed.raw.get("mode") == "configured":
+            listed_date_source = "listing:configured"
+        else:
+            listed_date_source = "listing"
+        published_layers.append((listed_date_source, from_listing))
     categories = (_merge("categories", layers, provenance) or [])
+    published_at = _merge("published_at", published_layers, provenance)
+    updated_at = _merge("updated_at", layers, provenance)
+    published_source = provenance.get("published_at")
+    if published_source == "meta" and meta.get("_published_how"):
+        provenance["published_at"] = meta["_published_how"]
+    elif published_source == "date_rule" and date_rule.get("_published_how"):
+        provenance["published_at"] = date_rule["_published_how"]
+    updated_source = provenance.get("updated_at")
+    if updated_source == "meta" and meta.get("_updated_how"):
+        provenance["updated_at"] = meta["_updated_how"]
     detail = ArticleDetail(
         url=url,
         title=_merge("title", layers, provenance),
         summary=_merge("summary", layers, provenance),
         body_text=body_text,
         body_html=body_html,
-        published_at=_merge("published_at", published_layers, provenance),
-        updated_at=_merge("updated_at", layers, provenance),
+        published_at=published_at,
+        updated_at=updated_at,
         image_url=_merge("image_url", [("meta", meta), ("jsonld", jsonld),
                                        ("heuristic", heuristic)], provenance),
         author=_merge("author", layers, provenance),
@@ -722,6 +1006,8 @@ def extract_article(
             # Every candidate's word count, so a survey can answer "which
             # extractor is carrying which sites?" without re-fetching them.
             "body_candidates": candidates,
+            "date_candidates": heuristic.get("_date_candidates", []),
+            "date_rule_diagnostics": date_rule.get("_diagnostics", []),
         },
     )
     return detail

@@ -61,7 +61,64 @@ NAVBAR_PAGE = f"""
 </div><p>cookie</p></body></html>
 """
 
+GOPUBLIC_PAGE = f"""
+<html lang="da"><head><meta property="og:title" content="Ny informationsside om ulve">
+</head><body><main><div class="news-page"><h1>Ny informationsside om ulve</h1>
+<span>Publiceret&nbsp;</span><span class="datetime datetime-to-locale"
+data-date="2026-05-08T09:01:37Z" data-format="dd-MM-yyyy">08-05-2026</span>
+<div class="rich-text"><p>{BODY}</p></div></div></main></body></html>
+"""
+
+VISIBLE_DATE_PAGE = f"""
+<html><body><main><div class="news-page"><h1>Lønløft til pædagogisk personale</h1>
+<span class="date">23-06-2026</span><div class="rich-text"><p>{BODY}</p></div>
+</div></main></body></html>
+"""
+
+FORM_WRAPPED_PAGE = f"""
+<html><body><form id="form1"><nav>Menu</nav><main><div class="news-page">
+<h1>Nyhed i ASP.NET-side</h1><span class="date">23-06-2026</span>
+<figure><img src="/media/news.jpg" alt="Nyhed"></figure>
+<div class="rich-text"><p>{BODY}</p></div></div></main></form></body></html>
+"""
+
+PAGE_DATE_META = f"""
+<html><head><meta name="page_date" content="2026-05-04T13:20:20Z">
+<meta property="og:updated_time" content="2026-05-04T13.51.00Z"></head>
+<body><main><h1>Kystnatur kortlægges</h1><p>{BODY}</p></main></body></html>
+"""
+
+EMBEDDED_MODEL_PAGE = f"""
+<html><body><div class="js-page" data-model="{{&quot;Headline&quot;:&quot;Valgresultat&quot;,
+&quot;MainContent&quot;:&quot;&lt;p&gt;{BODY}&lt;/p&gt;&quot;,
+&quot;ListItemDate&quot;:&quot;2026-03-24&quot;}}"></div></body></html>
+"""
+
+ARTICLE_WITH_CONTACT_CARD = f"""
+<html><body><main><article><h1>Stor færgestrategi</h1>
+<section><h2>Baggrund</h2><p>{BODY}</p></section>
+<section itemscope itemtype="https://schema.org/LocalBusiness">
+<h2 itemprop="name">Kontakt</h2><p>Ejendomme og Faciliteter</p>
+<p><a href="mailto:service@example.dk">Send sikker post</a></p></section>
+</article></main></body></html>
+"""
+
 URL = "https://example.dk/nyheder/en-nyhed"
+GOPUBLIC_DATE_RULE = [{
+    "name": "gopublic-published",
+    "selector": ".news-page > span.datetime.datetime-to-locale[data-date]",
+    "attribute": "data-date",
+}]
+VISIBLE_DATE_RULE = [{
+    "name": "visible-news-date",
+    "selector": ".news-page > span.date",
+}]
+EMBEDDED_DATE_RULE = [{
+    "name": "component-list-item-date",
+    "selector": ".js-page[data-model]",
+    "attribute": "data-model",
+    "json_key": "ListItemDate",
+}]
 
 
 class TestJsonLdLayer:
@@ -121,6 +178,12 @@ class TestOverStrippingGuard:
         assert "Forside" not in (d.body_text or "")
         assert "cookie" not in (d.body_text or "")
 
+    def test_structured_office_contact_card_is_not_article_body(self):
+        d = extract_article(ARTICLE_WITH_CONTACT_CARD, URL)
+        assert BODY[:40] in (d.body_text or "")
+        assert "Ejendomme og Faciliteter" not in (d.body_text or "")
+        assert "Send sikker post" not in (d.body_text or "")
+
 
 class TestDensityFallback:
     """Skanderborg's article pages contain exactly one <p> in the whole document,
@@ -150,6 +213,94 @@ class TestListingFallback:
         d = extract_article(JSONLD_PAGE, URL, listed=listed)
         assert d.published_at == "2026-08-18T13:00:00+00:00"
         assert d.provenance["published_at"] == "jsonld"
+
+    def test_feed_date_is_not_mislabelled_as_listing(self):
+        listed = ListedArticle(
+            url=URL,
+            published_at="2026-08-10T06:00:00+00:00",
+            channel="feed",
+        )
+        d = extract_article(UMBRACO_PAGE, URL, listed=listed)
+        assert d.published_at == "2026-08-10T06:00:00+00:00"
+        assert d.provenance["published_at"] == "feed"
+
+    def test_reviewed_listing_selector_is_identifiable(self):
+        listed = ListedArticle(
+            url=URL,
+            published_at="2026-08-10T06:00:00+00:00",
+            channel="listing",
+            raw={"mode": "configured"},
+        )
+        d = extract_article(UMBRACO_PAGE, URL, listed=listed)
+        assert d.provenance["published_at"] == "listing:configured"
+
+
+class TestDomPublicationDates:
+    def test_data_date_beside_published_label(self):
+        d = extract_article(GOPUBLIC_PAGE, URL,
+                            published_date_rules=GOPUBLIC_DATE_RULE)
+        assert d.published_at == "2026-05-08T09:01:37+00:00"
+        assert d.provenance["published_at"] == "rule:gopublic-published"
+
+    def test_visible_date_immediately_after_heading(self):
+        d = extract_article(VISIBLE_DATE_PAGE, URL,
+                            published_date_rules=VISIBLE_DATE_RULE)
+        assert d.published_at == "2026-06-22T22:00:00+00:00"
+        assert d.provenance["published_at"] == "rule:visible-news-date"
+
+    def test_dom_candidate_is_diagnostic_without_explicit_rule(self):
+        d = extract_article(GOPUBLIC_PAGE, URL)
+        assert d.published_at is None
+        assert d.raw["date_candidates"]
+
+    def test_body_event_date_is_not_publication_date(self):
+        html = ("<html><body><main><h1>Invitation</h1>"
+                f"<article><p>{BODY}</p><p class='date'>Mødet er 23-06-2026</p>"
+                "</article></main></body></html>")
+        assert extract_article(html, URL).published_at is None
+
+    def test_page_date_meta_and_updated_time_are_classified(self):
+        d = extract_article(PAGE_DATE_META, URL)
+        assert d.published_at == "2026-05-04T13:20:20+00:00"
+        assert d.updated_at == "2026-05-04T13:51:00+00:00"
+        assert d.provenance["published_at"] == "meta:page_date"
+        assert d.provenance["updated_at"] == "meta:og:updated_time"
+
+    def test_page_wide_form_does_not_delete_article_or_date(self):
+        d = extract_article(FORM_WRAPPED_PAGE, URL,
+                            published_date_rules=VISIBLE_DATE_RULE)
+        assert d.published_at == "2026-06-22T22:00:00+00:00"
+        assert BODY[:40] in (d.body_text or "")
+        assert d.image_url == "https://example.dk/media/news.jpg"
+
+    def test_embedded_component_model_publication_date(self):
+        d = extract_article(EMBEDDED_MODEL_PAGE, URL,
+                            published_date_rules=EMBEDDED_DATE_RULE)
+        assert d.published_at == "2026-03-23T23:00:00+00:00"
+        assert d.provenance["published_at"] == "rule:component-list-item-date"
+
+    def test_ambiguous_explicit_rule_is_rejected(self):
+        html = ("<main><h1>Nyhed</h1><span class='date'>01-02-2026</span>"
+                "<span class='date'>03-04-2026</span><p>" + BODY + "</p></main>")
+        d = extract_article(
+            html, URL,
+            published_date_rules=[{"name": "dates", "selector": "span.date"}],
+        )
+        assert d.published_at is None
+        assert d.raw["date_rule_diagnostics"][0]["status"] == "ambiguous"
+
+    def test_configured_script_field_is_supported(self):
+        html = ("<main><h1>Nyhed</h1><p>" + BODY + "</p></main>"
+                '<script>window.__PAGE__={newsDate:"2026-08-18T08:09:45Z"}</script>')
+        d = extract_article(
+            html, URL,
+            published_date_rules=[{
+                "name": "nuxt-news-date",
+                "pattern": r'newsDate:\s*"([^"]+)"',
+            }],
+        )
+        assert d.published_at == "2026-08-18T08:09:45+00:00"
+        assert d.provenance["published_at"] == "rule:nuxt-news-date"
 
 
 class TestRobustness:

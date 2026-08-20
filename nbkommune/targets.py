@@ -42,6 +42,65 @@ CHANNELS = ("auto", "feed", "sitemap", "listing")
 #   tredjepart   — press releases live on an external service
 SOURCE_TYPES = ("faelles", "separat", "kun_nyheder", "tredjepart")
 
+# Proprietary publication-date markup is opt-in per target. Profiles keep the
+# rule definition in one reviewed place while the registry explicitly states
+# which municipalities are allowed to use it. None of these are fallbacks: if a
+# selector changes or becomes ambiguous, extraction leaves published_at empty.
+PUBLISHED_DATE_PROFILES: dict[str, list[dict]] = {
+    "gopublic-data-date": [{
+        "name": "gopublic-data-date",
+        "selector": ".news-page > span.datetime.datetime-to-locale[data-date]",
+        "attribute": "data-date",
+    }],
+    "moliri-created-meta": [{
+        "name": "moliri-cmspagecreated",
+        "selector": "meta[name='cmspagecreated']",
+        "attribute": "content",
+    }],
+    "hvidovre-visible-date": [{
+        "name": "hvidovre-visible-date",
+        "selector": ".news-page > span.date",
+    }],
+    "middelfart-visible-date": [{
+        "name": "middelfart-visible-date",
+        "selector": ".news-page > span.date",
+    }],
+    "thisted-visible-date": [{
+        "name": "thisted-visible-date",
+        "selector": "span.date",
+    }],
+    "ishoej-visible-date": [{
+        "name": "ishoej-visible-date",
+        "selector": "#main .rte > h1 + p.small",
+    }],
+    "slagelse-nuxt-news-date": [{
+        "name": "slagelse-nuxt-news-date",
+        "pattern": r'newsDate:\s*"([^"]+)"',
+    }],
+    "favrskov-visible-date": [{
+        "name": "favrskov-visible-date",
+        "selector": ".news-page__publishing-date",
+    }],
+    "holstebro-visible-date": [{
+        "name": "holstebro-visible-date",
+        "selector": ".p-imagetext > h1 + small",
+    }],
+    "koebenhavn-publication-date": [{
+        "name": "koebenhavn-publication-date",
+        "selector": ".field--name-publication-date time[datetime]",
+        "attribute": "datetime",
+    }],
+    "ringkoebing-skjern-visible-date": [{
+        "name": "ringkoebing-skjern-visible-date",
+        "selector": ".news__date",
+    }],
+    "rudersdal-visible-date": [{
+        "name": "rudersdal-visible-date",
+        "selector": "header.content-header h1 + span time[datetime]",
+        "attribute": "datetime",
+    }],
+}
+
 
 @dataclass(frozen=True)
 class Target:
@@ -55,8 +114,10 @@ class Target:
     enabled: bool = True
     # Channel config. `feed_url` for feed; `url_prefix`/`url_prefixes` (+ optional
     # `sitemap_url`) for sitemap; `item_selector` / `link_selector` and optional
-    # `date_selector` / `body_selector` for listing. Kept as a loose dict so a
-    # site can be fixed in config/targets.json without a schema migration.
+    # `date_selector` / `body_selector` for listing, plus strict
+    # `published_date_rules` for detail-page dates that use proprietary markup.
+    # Kept as a loose dict so a site can be fixed in config/targets.json without
+    # a schema migration.
     config: dict = field(default_factory=dict)
     # Why this site needs attention — carried through from the URL survey
     # ("JS-rendered", "verify archive", …). Operational, never behavioural.
@@ -103,6 +164,22 @@ class Target:
             if u not in out:
                 out.append(u)
         return out
+
+    @property
+    def published_date_rules(self) -> list[dict]:
+        """Reviewed detail-date rules explicitly enabled for this target."""
+        inline = self.config.get("published_date_rules")
+        if isinstance(inline, list):
+            return inline
+        profile = self.config.get("published_date_profile")
+        if not profile:
+            return []
+        rules = PUBLISHED_DATE_PROFILES.get(str(profile))
+        if rules is None:
+            logger.warning("target %r has unknown published date profile %r",
+                           self.key, profile)
+            return []
+        return [dict(rule) for rule in rules]
 
 
 def _coerce(entry: dict) -> Target | None:

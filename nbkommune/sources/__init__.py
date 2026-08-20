@@ -12,9 +12,8 @@ to.
 rather than by reliability, and the measurements say that is the right trade:
 
 - A **feed** gives title, link and a real ``datePublished`` in one request.
-- A **listing** gives the title and, on many sites, the only real publication
-  date that exists anywhere — most of these CMSes expose merely a "sidst
-  opdateret" stamp on the article page itself.
+- A **listing** gives the title and, when it has a reviewed ``date_selector``,
+  sometimes the only real publication date that exists anywhere.
 - A **sitemap** gives neither a title nor a publication date, only ``<lastmod>``.
   It is also not the coverage win it looks like: Skanderborg's sitemap lists 7
   URLs under ``/nyheder`` where its listing page yields 12+.
