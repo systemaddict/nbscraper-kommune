@@ -14,6 +14,10 @@
       --muted-fg: #71717a;
       --border: #e4e4e7;
       --ring: #a1a1aa;
+      --sidebar: #fafafa;
+      --sidebar-accent: #f0f0f2;
+      --sidebar-width: 18rem;
+      --header-height: 3rem;
       --success: #15803d;
       --warning: #b45309;
       --danger: #b91c1c;
@@ -23,22 +27,50 @@
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--background); color: var(--foreground); }
     button, input, select { font: inherit; }
-    .shell { width: min(1440px, 100%); margin: 0 auto; padding: 2rem; }
-    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+    button { color: inherit; }
+    .app-shell { min-height: 100vh; padding: .5rem .5rem .5rem calc(var(--sidebar-width) + .5rem); }
+    .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; display: flex; width: var(--sidebar-width); flex-direction: column; background: var(--sidebar); border-right: 1px solid var(--border); transition: transform .2s ease; }
+    .brand { display: flex; align-items: center; gap: .65rem; height: 3.5rem; margin: .5rem; padding: 0 .65rem; border-radius: .5rem; font-weight: 650; letter-spacing: -.02em; }
+    .brand-mark { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: .5rem; background: var(--foreground); color: var(--background); font-size: .68rem; letter-spacing: -.04em; }
+    .sidebar-content { flex: 1; overflow-y: auto; padding: .35rem .75rem 1rem; }
+    .nav-group + .nav-group { margin-top: 1.25rem; }
+    .nav-label { margin: 0 0 .35rem; padding: 0 .65rem; color: var(--muted-fg); font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .nav-list { display: grid; gap: .15rem; }
+    .nav-item { display: flex; width: 100%; align-items: center; gap: .7rem; min-height: 2.3rem; padding: .45rem .65rem; border: 0; border-radius: .5rem; background: transparent; text-align: left; font-size: .85rem; cursor: pointer; }
+    .nav-item:hover { background: var(--sidebar-accent); }
+    .nav-item.active { background: var(--sidebar-accent); font-weight: 600; }
+    .nav-icon { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; color: var(--muted-fg); }
+    .nav-item.active .nav-icon { color: var(--foreground); }
+    .nav-badge { min-width: 1.3rem; margin-left: auto; padding: .08rem .36rem; border-radius: 999px; background: var(--muted); color: var(--muted-fg); font-size: .68rem; line-height: 1.1rem; text-align: center; font-variant-numeric: tabular-nums; }
+    .sidebar-footer { margin: .5rem; padding: .65rem; border-top: 1px solid var(--border); }
+    .user-row { display: flex; min-width: 0; align-items: center; gap: .6rem; }
+    .user-avatar { display: grid; width: 1.8rem; height: 1.8rem; flex: 0 0 auto; place-items: center; border-radius: 999px; background: var(--muted); color: var(--muted-fg); font-size: .7rem; font-weight: 650; text-transform: uppercase; }
+    .user-copy { min-width: 0; flex: 1; }
+    .user-name { font-size: .75rem; font-weight: 600; }
+    .signout { min-height: 1.8rem; padding: .3rem .5rem; color: var(--muted-fg); background: transparent; border: 0; border-radius: .45rem; cursor: pointer; }
+    .signout:hover { color: var(--foreground); background: var(--sidebar-accent); }
+    .content-frame { min-height: calc(100vh - 1rem); overflow: hidden; border: 1px solid var(--border); border-radius: .8rem; background: var(--background); box-shadow: 0 1px 2px rgb(0 0 0 / .03); }
+    .topbar { position: sticky; top: .5rem; z-index: 20; display: flex; height: var(--header-height); align-items: center; justify-content: space-between; gap: 1rem; padding: 0 1.25rem; background: color-mix(in srgb, var(--background) 92%, transparent); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .topbar-title { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+    .menu-toggle { display: none; width: 2rem; height: 2rem; place-items: center; padding: 0; border: 0; border-radius: .45rem; background: transparent; cursor: pointer; }
+    .menu-toggle:hover { background: var(--muted); }
+    .menu-toggle svg { width: 1rem; height: 1rem; }
+    .topbar-actions { display: flex; align-items: center; gap: .6rem; }
+    .page { width: min(1440px, 100%); margin: 0 auto; padding: 1.5rem; }
+    .page[hidden] { display: none; }
+    .page-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.35rem; }
+    .page-intro p { max-width: 42rem; }
     h1 { margin: 0; font-size: 1.35rem; letter-spacing: -.025em; }
     h2 { margin: 0; font-size: .95rem; font-weight: 600; }
     p { margin: .35rem 0 0; }
     .muted { color: var(--muted-fg); }
     .small { font-size: .8rem; }
     .status { display: inline-flex; align-items: center; gap: .5rem; padding: .42rem .7rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: .8rem; }
-    .header-actions { display: flex; align-items: center; gap: .6rem; }
-    .signout { min-height: 2rem; padding: .35rem .65rem; color: var(--muted-fg); background: var(--card); border: 1px solid var(--border); border-radius: .5rem; cursor: pointer; }
-    .signout:hover { color: var(--foreground); }
     .dot { width: .5rem; height: .5rem; border-radius: 999px; background: var(--ring); }
     .dot.healthy, .dot.working { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent); }
     .dot.degraded { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent); }
     .grid { display: grid; gap: 1rem; }
-    .stats { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 1rem; }
+    .stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .columns { grid-template-columns: minmax(0, 1.5fr) minmax(320px, .7fr); align-items: start; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 1px 2px rgb(0 0 0 / .025); overflow: hidden; }
     .card-head { padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
@@ -65,7 +97,6 @@
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .error-message { margin-top: .2rem; color: var(--muted-fg); font-size: .74rem; overflow-wrap: anywhere; }
     .empty { color: var(--muted-fg); font-size: .82rem; padding: .5rem 0; }
-    .article-section { margin-top: 1rem; }
     .article-title { max-width: 34rem; white-space: normal; line-height: 1.35; }
     .article-title a { color: inherit; text-decoration: none; }
     .article-title a:hover { text-decoration: underline; }
@@ -79,14 +110,12 @@
     .pager-actions { display: flex; gap: .4rem; }
     .pager button { cursor: pointer; }
     .pager button:disabled { opacity: .4; cursor: default; }
-    .email-review { margin-top: 1rem; }
     .email-subject { white-space: normal; min-width: 18rem; line-height: 1.35; }
     .email-reason { max-width: 30rem; white-space: normal; line-height: 1.35; }
     .email-actions { display: flex; align-items: center; gap: .4rem; }
     .email-actions button { min-height: 2rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--foreground); cursor: pointer; }
     .email-actions button.danger { color: var(--danger); }
     .remember { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted-fg); font-size: .72rem; }
-    .integration-section { margin-top: 1rem; }
     .integration-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
     .integration-copy { min-width: 0; }
     .integration-details { margin-top: .55rem; display: grid; gap: .25rem; overflow-wrap: anywhere; }
@@ -98,132 +127,187 @@
     .notice.ok { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); }
     .notice.bad { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
     code { font-size: .76rem; }
-    @media (max-width: 1000px) { .stats { grid-template-columns: repeat(2, 1fr); } .columns { grid-template-columns: 1fr; } }
-    @media (max-width: 640px) { .shell { padding: 1rem; } header, .integration-layout { flex-direction: column; } .stats { grid-template-columns: 1fr 1fr; } .stat-value { font-size: 1.45rem; } }
+    .sidebar-scrim { position: fixed; inset: 0; z-index: 25; display: none; padding: 0; background: rgb(0 0 0 / .38); border: 0; }
+    @media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, 1fr); } .columns { grid-template-columns: 1fr; } }
+    @media (max-width: 800px) {
+      .app-shell { padding: 0; }
+      .sidebar { transform: translateX(-100%); box-shadow: 12px 0 30px rgb(0 0 0 / .12); }
+      body.menu-open { overflow: hidden; }
+      body.menu-open .sidebar { transform: translateX(0); }
+      body.menu-open .sidebar-scrim { display: block; }
+      .content-frame { min-height: 100vh; border: 0; border-radius: 0; }
+      .topbar { top: 0; }
+      .menu-toggle { display: grid; }
+    }
+    @media (max-width: 640px) {
+      .page { padding: 1rem; }
+      .page-intro, .integration-layout { flex-direction: column; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stat-value { font-size: 1.45rem; }
+      .topbar { padding: 0 .8rem; }
+      .status { padding: .4rem; }
+      #status-text { display: none; }
+      .search { width: 100%; }
+      .filters { width: 100%; }
+      .filters select { flex: 1 1 9rem; }
+    }
     @media (prefers-color-scheme: dark) {
-      :root { --background: #09090b; --foreground: #fafafa; --card: #111113; --muted: #27272a; --muted-fg: #a1a1aa; --border: #27272a; --ring: #71717a; --success: #4ade80; --warning: #fbbf24; --danger: #f87171; }
+      :root { --background: #09090b; --foreground: #fafafa; --card: #111113; --muted: #27272a; --muted-fg: #a1a1aa; --border: #27272a; --ring: #71717a; --sidebar: #111113; --sidebar-accent: #27272a; --success: #4ade80; --warning: #fbbf24; --danger: #f87171; }
     }
   </style>
 </head>
 <body>
-  <main class="shell">
-    <header>
-      <div>
-        <h1>Kommune scraper</h1>
-        <p class="muted small">Nyheder og pressemeddelelser · driftsstatus</p>
-      </div>
-      <div class="header-actions">
-        <span id="user-email" class="muted small"></span>
-        <div class="status"><span id="status-dot" class="dot"></span><span id="status-text">Forbinder…</span></div>
-        <button id="signout" class="signout" type="button">Log ud</button>
-      </div>
-    </header>
-
-    <section class="grid stats" aria-label="Nøgletal">
-      <div class="card stat"><div class="stat-label">Kommuner</div><div class="stat-value" id="municipalities">—</div><div class="stat-hint" id="crawl-hint">Ingen data endnu</div></div>
-      <div class="card stat"><div class="stat-label">Artikler</div><div class="stat-value" id="articles">—</div><div class="stat-hint" id="listed-hint">—</div></div>
-      <div class="card stat"><div class="stat-label">Indlæst</div><div class="stat-value" id="ingested">—</div><div class="stat-hint" id="ingested-hint">—</div></div>
-      <div class="card stat"><div class="stat-label">Opgaver i kø</div><div class="stat-value" id="queued">—</div><div class="stat-hint" id="queue-hint">—</div></div>
-      <div class="card stat"><div class="stat-label">Fejl · 24 timer</div><div class="stat-value" id="errors">—</div><div class="stat-hint" id="error-hint">—</div></div>
-    </section>
-
-    <section class="grid columns">
-      <div class="stack">
-        <article class="card">
-          <div class="card-head"><h2>Kommuner</h2><span class="muted small">Ekstraktionsstatus</span></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Kommune</th><th>Kanal</th><th>Senest OK</th><th>Fremdrift</th><th class="num">Artikler</th><th class="num">Tynde</th><th class="num">Udaterede</th></tr></thead>
-            <tbody id="municipality-rows"></tbody>
-          </table></div>
-        </article>
-        <article class="card">
-          <div class="card-head"><h2>Seneste crawls</h2><span class="muted small" id="updated-at">—</span></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Kommune</th><th>Status</th><th>Startet</th><th class="num">Fundet</th><th class="num">Nye</th><th class="num">I kø</th></tr></thead>
-            <tbody id="crawl-rows"></tbody>
-          </table></div>
-        </article>
-      </div>
-
-      <aside class="stack">
-        <article class="card">
-          <div class="card-head"><h2>Worker</h2><span class="badge" id="worker-badge">Afventer</span></div>
-          <div class="card-body" id="task-list"><div class="empty">Ingen data endnu</div></div>
-        </article>
-        <article class="card">
-          <div class="card-head"><h2>Seneste fejl</h2><span class="badge" id="dead-badge">0 døde opgaver</span></div>
-          <div class="card-body" id="error-list"><div class="empty">Ingen data endnu</div></div>
-        </article>
-      </aside>
-    </section>
-
-    <section class="card integration-section">
-      <div class="card-head">
-        <div><h2>Gmail-indbakke</h2><p class="muted small">OAuth-forbindelse til kommunale nyheder og pressemeddelelser</p></div>
-        <span class="badge" id="gmail-badge">Henter…</span>
-      </div>
-      <div class="card-body">
-        <div id="gmail-notice" class="notice" hidden></div>
-        <div class="integration-layout">
-          <div class="integration-copy">
-            <strong id="gmail-summary">Henter Gmail-status…</strong>
-            <div class="integration-details muted small" id="gmail-details"></div>
-          </div>
-          <div class="integration-actions">
-            <button id="gmail-connect" type="button" hidden>Forbind Gmail</button>
-            <button id="gmail-disconnect" class="secondary" type="button" hidden>Afbryd</button>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Primær navigation">
+      <div class="brand"><span class="brand-mark">NB</span><span>Kommune scraper</span></div>
+      <nav class="sidebar-content">
+        <div class="nav-group">
+          <p class="nav-label">Overblik</p>
+          <div class="nav-list">
+            <button class="nav-item active" type="button" data-page="overview">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13h6V4H4v9Zm0 7h6v-3H4v3Zm10 0h6v-9h-6v9Zm0-13h6V4h-6v3Z"/></svg>
+              <span>Oversigt</span>
+            </button>
+            <button class="nav-item" type="button" data-page="scraper">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.64 5.64l2.12 2.12m8.48 8.48 2.12 2.12m0-12.72-2.12 2.12m-8.48 8.48-2.12 2.12"/><circle cx="12" cy="12" r="4"/></svg>
+              <span>Scraperdrift</span><span class="nav-badge" id="nav-queue">—</span>
+            </button>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="card article-section">
-      <div class="card-head">
-        <div><h2>Scrapede artikler</h2><p class="muted small" id="article-count">Henter artikler…</p></div>
-        <div class="filters" aria-label="Artikel-filtre">
-          <input id="article-search" class="search" type="search" placeholder="Søg i titel og tekst…" aria-label="Søg i artikler" autocomplete="off">
-          <select id="article-kind" aria-label="Type">
-            <option value="">Alle typer</option>
-            <option value="nyhed">Nyheder</option>
-            <option value="pressemeddelelse">Pressemeddelelser</option>
-          </select>
-          <select id="article-status" aria-label="Status">
-            <option value="">Alle statusser</option>
-            <option value="ingested">Indlæst</option>
-            <option value="listed">Afventer</option>
-            <option value="gone">Fjernet</option>
-          </select>
-          <select id="article-source" aria-label="Kilde">
-            <option value="">Alle kilder</option>
-            <option value="website">Website</option>
-            <option value="email">E-mail</option>
-          </select>
-          <select id="article-municipality" aria-label="Kommune">
-            <option value="">Alle kommuner</option>
-          </select>
+        <div class="nav-group">
+          <p class="nav-label">Indhold</p>
+          <div class="nav-list">
+            <button class="nav-item" type="button" data-page="articles">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+              <span>Artikelsøgning</span>
+            </button>
+            <button class="nav-item" type="button" data-page="email-review">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              <span>E-mailkontrol</span><span class="nav-badge" id="nav-email-count">—</span>
+            </button>
+          </div>
+        </div>
+        <div class="nav-group">
+          <p class="nav-label">Konfiguration</p>
+          <div class="nav-list">
+            <button class="nav-item" type="button" data-page="gmail">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.1.4.3.8.6 1 .3.3.6.4 1 .4h.09v4H21a1.7 1.7 0 0 0-1.6.6Z"/></svg>
+              <span>Gmail-opsætning</span><span class="dot" id="nav-gmail-dot"></span>
+            </button>
+          </div>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-row">
+          <span class="user-avatar" id="user-avatar">NB</span>
+          <div class="user-copy"><div class="user-name">Administrator</div><div id="user-email" class="muted small truncate"></div></div>
+          <button id="signout" class="signout" type="button" title="Log ud" aria-label="Log ud">↪</button>
         </div>
       </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Titel</th><th>Kommune</th><th>Kilde</th><th>Type</th><th>Status</th><th>Publiceret</th><th>Indlæst</th><th class="num">Ord</th></tr></thead>
-        <tbody id="article-rows"><tr><td colspan="8" class="empty">Henter artikler…</td></tr></tbody>
-      </table></div>
-      <div class="pager">
-        <span class="muted small" id="article-page">—</span>
-        <div class="pager-actions"><button id="article-prev" type="button">Forrige</button><button id="article-next" type="button">Næste</button></div>
-      </div>
-    </section>
+    </aside>
+    <button class="sidebar-scrim" id="sidebar-scrim" type="button" aria-label="Luk menu"></button>
 
-    <section class="card email-review">
-      <div class="card-head">
-        <div><h2>E-mails til kontrol</h2><p class="muted small" id="email-count">Henter tvivlstilfælde…</p></div>
-        <span class="badge" id="email-badge">0</span>
-      </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Afsender</th><th>Emne</th><th>AI-vurdering</th><th>Handling</th></tr></thead>
-        <tbody id="email-rows"><tr><td colspan="4" class="empty">Henter e-mails…</td></tr></tbody>
-      </table></div>
-    </section>
-  </main>
+    <main class="content-frame">
+      <header class="topbar">
+        <div class="topbar-title">
+          <button class="menu-toggle" id="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Åbn menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <h2 id="topbar-heading">Oversigt</h2>
+        </div>
+        <div class="topbar-actions"><div class="status"><span id="status-dot" class="dot"></span><span id="status-text">Forbinder…</span></div></div>
+      </header>
+
+      <section class="page" id="page-overview" data-title="Oversigt">
+        <div class="page-intro"><div><h1>Godt overblik over indsamlingen</h1><p class="muted small">Nøgletal for kommuner, artikler, kø og fejl på tværs af hele scraperen.</p></div><span class="muted small" id="updated-at">—</span></div>
+        <section class="grid stats" aria-label="Nøgletal">
+          <div class="card stat"><div class="stat-label">Kommuner</div><div class="stat-value" id="municipalities">—</div><div class="stat-hint" id="crawl-hint">Ingen data endnu</div></div>
+          <div class="card stat"><div class="stat-label">Artikler</div><div class="stat-value" id="articles">—</div><div class="stat-hint" id="listed-hint">—</div></div>
+          <div class="card stat"><div class="stat-label">Indlæst</div><div class="stat-value" id="ingested">—</div><div class="stat-hint" id="ingested-hint">—</div></div>
+          <div class="card stat"><div class="stat-label">Opgaver i kø</div><div class="stat-value" id="queued">—</div><div class="stat-hint" id="queue-hint">—</div></div>
+          <div class="card stat"><div class="stat-label">Fejl · 24 timer</div><div class="stat-value" id="errors">—</div><div class="stat-hint" id="error-hint">—</div></div>
+        </section>
+      </section>
+
+      <section class="page" id="page-scraper" data-title="Scraperdrift" hidden>
+        <div class="page-intro"><div><h1>Scraperdrift</h1><p class="muted small">Status for kommuner, seneste crawls, worker-kø og registrerede fejl.</p></div></div>
+        <section class="grid columns">
+          <div class="stack">
+            <article class="card">
+              <div class="card-head"><h2>Kommuner</h2><span class="muted small">Ekstraktionsstatus</span></div>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Kommune</th><th>Kanal</th><th>Senest OK</th><th>Fremdrift</th><th class="num">Artikler</th><th class="num">Tynde</th><th class="num">Udaterede</th></tr></thead>
+                <tbody id="municipality-rows"></tbody>
+              </table></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h2>Seneste crawls</h2><span class="muted small">Seneste 12 kørsler</span></div>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Kommune</th><th>Status</th><th>Startet</th><th class="num">Fundet</th><th class="num">Nye</th><th class="num">I kø</th></tr></thead>
+                <tbody id="crawl-rows"></tbody>
+              </table></div>
+            </article>
+          </div>
+          <aside class="stack">
+            <article class="card">
+              <div class="card-head"><h2>Worker</h2><span class="badge" id="worker-badge">Afventer</span></div>
+              <div class="card-body" id="task-list"><div class="empty">Ingen data endnu</div></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h2>Seneste fejl</h2><span class="badge" id="dead-badge">0 døde opgaver</span></div>
+              <div class="card-body" id="error-list"><div class="empty">Ingen data endnu</div></div>
+            </article>
+          </aside>
+        </section>
+      </section>
+
+      <section class="page" id="page-articles" data-title="Artikelsøgning" hidden>
+        <div class="page-intro"><div><h1>Artikelsøgning</h1><p class="muted small">Find og filtrér scrapede nyheder og pressemeddelelser.</p></div></div>
+        <section class="card">
+          <div class="card-head">
+            <div><h2>Artikler</h2><p class="muted small" id="article-count">Henter artikler…</p></div>
+            <div class="filters" aria-label="Artikel-filtre">
+              <input id="article-search" class="search" type="search" placeholder="Søg i titel og tekst…" aria-label="Søg i artikler" autocomplete="off">
+              <select id="article-kind" aria-label="Type"><option value="">Alle typer</option><option value="nyhed">Nyheder</option><option value="pressemeddelelse">Pressemeddelelser</option></select>
+              <select id="article-status" aria-label="Status"><option value="">Alle statusser</option><option value="ingested">Indlæst</option><option value="listed">Afventer</option><option value="gone">Fjernet</option></select>
+              <select id="article-source" aria-label="Kilde"><option value="">Alle kilder</option><option value="website">Website</option><option value="email">E-mail</option></select>
+              <select id="article-municipality" aria-label="Kommune"><option value="">Alle kommuner</option></select>
+            </div>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Titel</th><th>Kommune</th><th>Kilde</th><th>Type</th><th>Status</th><th>Publiceret</th><th>Indlæst</th><th class="num">Ord</th></tr></thead>
+            <tbody id="article-rows"><tr><td colspan="8" class="empty">Henter artikler…</td></tr></tbody>
+          </table></div>
+          <div class="pager"><span class="muted small" id="article-page">—</span><div class="pager-actions"><button id="article-prev" type="button">Forrige</button><button id="article-next" type="button">Næste</button></div></div>
+        </section>
+      </section>
+
+      <section class="page" id="page-email-review" data-title="E-mailkontrol" hidden>
+        <div class="page-intro"><div><h1>E-mailkontrol</h1><p class="muted small">Tildel de e-mails, som klassifikationen ikke sikkert kunne placere.</p></div></div>
+        <section class="card">
+          <div class="card-head"><div><h2>E-mails til kontrol</h2><p class="muted small" id="email-count">Henter tvivlstilfælde…</p></div><span class="badge" id="email-badge">0</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Afsender</th><th>Emne</th><th>AI-vurdering</th><th>Handling</th></tr></thead>
+            <tbody id="email-rows"><tr><td colspan="4" class="empty">Henter e-mails…</td></tr></tbody>
+          </table></div>
+        </section>
+      </section>
+
+      <section class="page" id="page-gmail" data-title="Gmail-opsætning" hidden>
+        <div class="page-intro"><div><h1>Gmail-opsætning</h1><p class="muted small">Administrér forbindelsen til indbakken for kommunale nyheder og pressemeddelelser.</p></div></div>
+        <section class="card">
+          <div class="card-head"><div><h2>Gmail-indbakke</h2><p class="muted small">OAuth-forbindelse med skrivebeskyttet adgang</p></div><span class="badge" id="gmail-badge">Henter…</span></div>
+          <div class="card-body">
+            <div id="gmail-notice" class="notice" hidden></div>
+            <div class="integration-layout">
+              <div class="integration-copy"><strong id="gmail-summary">Henter Gmail-status…</strong><div class="integration-details muted small" id="gmail-details"></div></div>
+              <div class="integration-actions"><button id="gmail-connect" type="button" hidden>Forbind Gmail</button><button id="gmail-disconnect" class="secondary" type="button" hidden>Afbryd</button></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -232,6 +316,31 @@
     const articleLimit = 25;
     let articleOffset = 0;
     let articleTotal = 0;
+    const defaultPage = "overview";
+    const validPages = new Set([...document.querySelectorAll(".nav-item[data-page]")].map((item) => item.dataset.page));
+
+    function activePageFromHash() {
+      const page = location.hash.replace(/^#/, "");
+      return validPages.has(page) ? page : defaultPage;
+    }
+    function closeMenu() {
+      document.body.classList.remove("menu-open");
+      $("menu-toggle").setAttribute("aria-expanded", "false");
+    }
+    function showPage(page = activePageFromHash()) {
+      const target = validPages.has(page) ? page : defaultPage;
+      document.querySelectorAll(".page").forEach((section) => { section.hidden = section.id !== `page-${target}`; });
+      document.querySelectorAll(".nav-item[data-page]").forEach((item) => {
+        const active = item.dataset.page === target;
+        item.classList.toggle("active", active);
+        if (active) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current");
+      });
+      const section = $(`page-${target}`);
+      $("topbar-heading").textContent = section.dataset.title;
+      document.title = `${section.dataset.title} · Kommune scraper`;
+      closeMenu();
+      window.scrollTo({top: 0});
+    }
 
     function esc(value) {
       return String(value ?? "").replace(/[&<>'"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
@@ -280,6 +389,7 @@
       $("ingested-hint").textContent = `${ratio}% af hele korpus`;
       $("queue-hint").textContent = running ? `${running} kører nu` : "Worker er ledig";
       $("error-hint").textContent = dead ? `${dead} døde opgaver` : "Ingen døde opgaver";
+      $("nav-queue").textContent = nf.format(queued + running);
       $("dead-badge").textContent = `${nf.format(dead)} døde opgaver`;
       $("dead-badge").className = `badge ${dead ? "bad" : "ok"}`;
       $("status-dot").className = `dot ${data.state}`;
@@ -354,6 +464,7 @@
         $("email-count").textContent = `${nf.format(data.total)} e-mails kræver kontrol`;
         $("email-badge").textContent = nf.format(data.total);
         $("email-badge").className = `badge ${data.total ? "bad" : "ok"}`;
+        $("nav-email-count").textContent = nf.format(data.total);
         const options = data.municipalities.map((item) => `<option value="${esc(item.key)}">${esc(item.name)}</option>`).join("");
         $("email-rows").innerHTML = data.items.map((row) => {
           const confidence = row.confidence == null ? "—" : `${Math.round(Number(row.confidence) * 100)}%`;
@@ -374,6 +485,7 @@
       disconnect.hidden = !data.connected || data.managed_by !== "oauth";
       connect.textContent = data.connected ? "Genforbind Gmail" : "Forbind Gmail";
       if (!data.configured) {
+        $("nav-gmail-dot").className = "dot degraded";
         badge.textContent = "Mangler opsætning";
         badge.className = "badge bad";
         $("gmail-summary").textContent = "Google OAuth er ikke konfigureret på serveren";
@@ -383,6 +495,7 @@
         return;
       }
       if (!data.connected) {
+        $("nav-gmail-dot").className = "dot";
         badge.textContent = "Ikke forbundet";
         badge.className = "badge";
         $("gmail-summary").textContent = "Ingen Gmail-indbakke er forbundet";
@@ -391,6 +504,7 @@
       }
       badge.textContent = data.enabled ? "Forbundet" : "Forbundet · collector slukket";
       badge.className = `badge ${data.enabled ? "ok" : ""}`;
+      $("nav-gmail-dot").className = `dot ${data.enabled ? "healthy" : "working"}`;
       $("gmail-summary").textContent = data.email_address || "Gmail-token fra miljøvariabel";
       const details = [
         `<span>Query: <code>${esc(data.query)}</code></span>`,
@@ -408,6 +522,7 @@
         if (!response.ok) throw new Error(`API-fejl ${response.status}`);
         renderGmail(await response.json());
       } catch (error) {
+        $("nav-gmail-dot").className = "dot degraded";
         $("gmail-badge").textContent = "Fejl";
         $("gmail-badge").className = "badge bad";
         $("gmail-summary").textContent = `Kunne ikke hente Gmail-status: ${error.message}`;
@@ -464,6 +579,7 @@
       const url = new URL(location.href);
       const result = url.searchParams.get("gmail");
       if (!result) return;
+      url.hash = "gmail";
       if (result === "connected") {
         showGmailNotice(`Gmail er forbundet${url.searchParams.get("email") ? ` som ${url.searchParams.get("email")}` : ""}.`, true);
       } else {
@@ -473,6 +589,7 @@
       url.searchParams.delete("email");
       url.searchParams.delete("reason");
       history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      showPage("gmail");
     }
 
     async function emailAction(row, action) {
@@ -508,6 +625,17 @@
       }
     }
     ["article-kind", "article-status", "article-source", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
+    document.querySelectorAll(".nav-item[data-page]").forEach((item) => item.addEventListener("click", () => {
+      const hash = `#${item.dataset.page}`;
+      if (location.hash === hash) showPage(item.dataset.page); else location.hash = item.dataset.page;
+    }));
+    $("menu-toggle").addEventListener("click", () => {
+      const open = document.body.classList.toggle("menu-open");
+      $("menu-toggle").setAttribute("aria-expanded", String(open));
+    });
+    $("sidebar-scrim").addEventListener("click", closeMenu);
+    addEventListener("hashchange", () => showPage());
+    addEventListener("keydown", (event) => { if (event.key === "Escape") closeMenu(); });
     $("email-rows").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
@@ -532,7 +660,12 @@
     });
     fetch("/api/auth/get-session", {cache: "no-store"})
       .then((response) => response.json())
-      .then((session) => { $("user-email").textContent = session?.user?.email || ""; });
+      .then((session) => {
+        const email = session?.user?.email || "";
+        $("user-email").textContent = email;
+        $("user-avatar").textContent = email ? email.slice(0, 2) : "NB";
+      });
+    showPage();
     showGmailCallbackResult();
     refresh();
   </script>

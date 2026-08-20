@@ -82,6 +82,10 @@ def test_health_and_dashboard_shell_are_public(tmp_path):
     page = client.get("/")
     assert page.status_code == 200
     assert "Kommune scraper" in page.text
+    for navigation_item in (
+        "Oversigt", "Scraperdrift", "Artikelsøgning", "E-mailkontrol", "Gmail-opsætning"
+    ):
+        assert navigation_item in page.text
     assert "NBK_DASHBOARD_TOKEN" not in page.text
 
 
