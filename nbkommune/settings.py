@@ -186,6 +186,8 @@ class Settings(BaseSettings):
     mcp_base_url: str = Field(default="")
     mcp_oauth_issuer: str = Field(default="")
     mcp_oauth_jwks_url: str = Field(default="")
+    mcp_ssl_certfile: Path | None = Field(default=None)
+    mcp_ssl_keyfile: Path | None = Field(default=None)
 
     # ── Gmail ingestion / AI routing ────────────────────────────────────
     # Disabled by default so existing workers do not acquire a new external
