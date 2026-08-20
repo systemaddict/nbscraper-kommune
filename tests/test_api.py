@@ -83,9 +83,11 @@ def test_health_and_dashboard_shell_are_public(tmp_path):
     assert page.status_code == 200
     assert "Kommune scraper" in page.text
     for navigation_item in (
-        "Oversigt", "Scraperdrift", "Artikelsøgning", "E-mailkontrol", "Gmail-opsætning"
+        "Oversigt", "Scraperdrift", "Artikelsøgning", "E-mailhistorik", "Gmail-opsætning"
     ):
         assert navigation_item in page.text
+    for email_status in ("review", "ingested", "ignored", "all"):
+        assert f'data-email-status="{email_status}"' in page.text
     assert "NBK_DASHBOARD_TOKEN" not in page.text
 
 
@@ -217,3 +219,47 @@ def test_article_source_filter_and_admin_email_assignment(tmp_path):
     assert assigned.status_code == 200
     assert assigned.json()["status"] == "ingested"
     assert client.get("/api/articles", params={"source": "email"}).json()["total"] == 1
+
+    ingested = client.get("/api/admin/emails", params={"status": "ingested"})
+    history = client.get("/api/admin/emails", params={"status": "all"})
+    assert ingested.json()["items"][0]["gmail_message_id"] == "review-1"
+    assert ingested.json()["status_counts"] == {"ingested": 1}
+    assert history.json()["total"] == 1
+
+    ignored = client.post(
+        "/api/admin/emails/review-1/ignore",
+        headers={"X-NBK-Admin-Action": "1", "X-NBK-User-Email": "admin@example.test"},
+        json={"remember_sender": False},
+    )
+    assert ignored.status_code == 200
+    assert client.get("/api/articles", params={"source": "email"}).json()["total"] == 0
+    ignored_list = client.get("/api/admin/emails", params={"status": "ignored"})
+    assert ignored_list.json()["items"][0]["status"] == "ignored"
+
+    reassigned = client.post(
+        "/api/admin/emails/review-1/assign",
+        headers={"X-NBK-Admin-Action": "1", "X-NBK-User-Email": "admin@example.test"},
+        json={"municipality_key": "koege", "remember_sender": False},
+    )
+    assert reassigned.status_code == 200
+    assert client.get("/api/articles", params={"source": "email"}).json()["total"] == 1
+
+    conn = db.connect(settings)
+    repo.upsert_article_source(
+        conn,
+        municipality_key="koege",
+        article_id=reassigned.json()["article_id"],
+        source_type="website",
+        external_id="website-copy-1",
+        source_url="https://koege.dk/news/test",
+    )
+    conn.commit()
+    conn.close()
+    assert client.post(
+        "/api/admin/emails/review-1/ignore",
+        headers={"X-NBK-Admin-Action": "1", "X-NBK-User-Email": "admin@example.test"},
+        json={"remember_sender": False},
+    ).status_code == 200
+    assert client.get("/api/articles", params={"source": "email"}).json()["total"] == 0
+    assert client.get("/api/articles", params={"source": "website"}).json()["total"] == 3
+    assert client.get("/api/admin/emails", params={"status": "invalid"}).status_code == 422

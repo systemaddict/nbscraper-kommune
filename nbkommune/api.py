@@ -156,11 +156,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def admin_emails(
         request: Request,
         conn: Annotated[Connection, Depends(get_conn)],
-        status: Literal["new", "review", "error", "ignored", "ingested"] | None = "review",
+        status: Literal[
+            "all", "new", "review", "error", "ignored", "ingested"
+        ] = "review",
         limit: int = Query(50, ge=1, le=200),
         offset: int = Query(0, ge=0),
     ) -> dict[str, Any]:
-        rows = repo.list_email_messages(conn, status=status, limit=limit, offset=offset)
+        selected_status = None if status == "all" else status
+        rows = repo.list_email_messages(
+            conn, status=selected_status, limit=limit, offset=offset
+        )
         fields = (
             "gmail_message_id", "sender_name", "sender_email", "subject",
             "received_at", "body_text", "municipality_key", "municipality_name",
@@ -178,7 +183,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {
             "items": items,
             "municipalities": municipalities,
-            "total": repo.count_email_messages(conn, status=status),
+            "total": repo.count_email_messages(conn, status=selected_status),
+            "status_counts": repo.count_email_messages_by_status(conn),
             "limit": limit,
             "offset": offset,
         }

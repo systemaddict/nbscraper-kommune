@@ -465,6 +465,45 @@ def count_email_messages(conn: Connection, *, status: str | None = None) -> int:
     return int(row["n"] if row else 0)
 
 
+def count_email_messages_by_status(conn: Connection) -> dict[str, int]:
+    """Return inbox totals for navigation and history filters."""
+    rows = conn.execute(
+        "SELECT status, COUNT(*) AS n FROM email_message GROUP BY status"
+    ).fetchall()
+    return {str(row["status"]): int(row["n"]) for row in rows}
+
+
+def remove_email_article_source(conn: Connection, gmail_message_id: str) -> bool:
+    """Detach one promoted email and remove an orphaned email-only article.
+
+    Website-backed articles are retained. The caller owns the transaction so
+    the source removal and subsequent email decision change are atomic.
+    """
+    source = conn.execute(
+        "SELECT municipality_key, article_id FROM article_source "
+        "WHERE source_type = 'email' AND external_id = %s",
+        (gmail_message_id,),
+    ).fetchone()
+    if source is None:
+        return False
+    conn.execute(
+        "DELETE FROM article_source WHERE source_type = 'email' AND external_id = %s",
+        (gmail_message_id,),
+    )
+    conn.execute(
+        """
+        DELETE FROM article
+        WHERE municipality_key = %(mk)s AND id = %(aid)s AND channel = 'email'
+          AND NOT EXISTS (
+              SELECT 1 FROM article_source
+              WHERE municipality_key = %(mk)s AND article_id = %(aid)s
+          )
+        """,
+        {"mk": source["municipality_key"], "aid": source["article_id"]},
+    )
+    return True
+
+
 # ── Gmail OAuth connection ──────────────────────────────────────────────────
 def get_gmail_connection(conn: Connection) -> dict | None:
     return conn.execute(

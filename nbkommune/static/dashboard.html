@@ -116,6 +116,10 @@
     .email-actions button { min-height: 2rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--foreground); cursor: pointer; }
     .email-actions button.danger { color: var(--danger); }
     .remember { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted-fg); font-size: .72rem; }
+    .email-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .email-tab { min-height: 2rem; padding: .35rem .65rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--muted-fg); cursor: pointer; }
+    .email-tab.active { border-color: var(--ring); background: var(--muted); color: var(--foreground); font-weight: 600; }
+    .email-tab-count { margin-left: .25rem; font-variant-numeric: tabular-nums; }
     .integration-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
     .integration-copy { min-width: 0; }
     .integration-details { margin-top: .55rem; display: grid; gap: .25rem; overflow-wrap: anywhere; }
@@ -183,7 +187,7 @@
             </button>
             <button class="nav-item" type="button" data-page="email-review">
               <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-              <span>E-mailkontrol</span><span class="nav-badge" id="nav-email-count">—</span>
+              <span>E-mailhistorik</span><span class="nav-badge" id="nav-email-count">—</span>
             </button>
           </div>
         </div>
@@ -282,14 +286,23 @@
         </section>
       </section>
 
-      <section class="page" id="page-email-review" data-title="E-mailkontrol" hidden>
-        <div class="page-intro"><div><h1>E-mailkontrol</h1><p class="muted small">Tildel de e-mails, som klassifikationen ikke sikkert kunne placere.</p></div></div>
+      <section class="page" id="page-email-review" data-title="E-mailhistorik" hidden>
+        <div class="page-intro"><div><h1>E-mailhistorik</h1><p class="muted small">Se AI-beslutninger, kontrollér tvivlstilfælde og ret fejlagtige klassifikationer.</p></div></div>
         <section class="card">
-          <div class="card-head"><div><h2>E-mails til kontrol</h2><p class="muted small" id="email-count">Henter tvivlstilfælde…</p></div><span class="badge" id="email-badge">0</span></div>
+          <div class="card-head">
+            <div><h2>E-mails</h2><p class="muted small" id="email-count">Henter e-mails…</p></div>
+            <div class="email-tabs" role="tablist" aria-label="E-mailstatus">
+              <button class="email-tab active" type="button" role="tab" aria-selected="true" data-email-status="review">Til kontrol <span class="email-tab-count" data-email-count="review">0</span></button>
+              <button class="email-tab" type="button" role="tab" aria-selected="false" data-email-status="ingested">Indlæst <span class="email-tab-count" data-email-count="ingested">0</span></button>
+              <button class="email-tab" type="button" role="tab" aria-selected="false" data-email-status="ignored">Ignoreret <span class="email-tab-count" data-email-count="ignored">0</span></button>
+              <button class="email-tab" type="button" role="tab" aria-selected="false" data-email-status="all">Alle <span class="email-tab-count" data-email-count="all">0</span></button>
+            </div>
+          </div>
           <div class="table-wrap"><table>
-            <thead><tr><th>Afsender</th><th>Emne</th><th>AI-vurdering</th><th>Handling</th></tr></thead>
-            <tbody id="email-rows"><tr><td colspan="4" class="empty">Henter e-mails…</td></tr></tbody>
+            <thead><tr><th>Afsender</th><th>Emne</th><th>Status</th><th>AI-vurdering</th><th>Handling</th></tr></thead>
+            <tbody id="email-rows"><tr><td colspan="5" class="empty">Henter e-mails…</td></tr></tbody>
           </table></div>
+          <div class="pager"><span class="muted small" id="email-page">—</span><div class="pager-actions"><button id="email-prev" type="button">Forrige</button><button id="email-next" type="button">Næste</button></div></div>
         </section>
       </section>
 
@@ -316,6 +329,10 @@
     const articleLimit = 25;
     let articleOffset = 0;
     let articleTotal = 0;
+    const emailLimit = 50;
+    let emailOffset = 0;
+    let emailTotal = 0;
+    let emailStatus = "review";
     const defaultPage = "overview";
     const validPages = new Set([...document.querySelectorAll(".nav-item[data-page]")].map((item) => item.dataset.page));
 
@@ -457,23 +474,41 @@
     }
 
     async function refreshEmails() {
+      const params = new URLSearchParams({status: emailStatus, limit: emailLimit, offset: emailOffset});
       try {
-        const response = await fetch("/api/admin/emails?status=review&limit=50", {cache: "no-store"});
+        const response = await fetch(`/api/admin/emails?${params}`, {cache: "no-store"});
         if (!response.ok) throw new Error(`API-fejl ${response.status}`);
         const data = await response.json();
-        $("email-count").textContent = `${nf.format(data.total)} e-mails kræver kontrol`;
-        $("email-badge").textContent = nf.format(data.total);
-        $("email-badge").className = `badge ${data.total ? "bad" : "ok"}`;
-        $("nav-email-count").textContent = nf.format(data.total);
+        emailTotal = Number(data.total);
+        const counts = data.status_counts || {};
+        const allCount = Object.values(counts).reduce((sum, count) => sum + Number(count), 0);
+        document.querySelectorAll("[data-email-count]").forEach((item) => {
+          const key = item.dataset.emailCount;
+          item.textContent = nf.format(key === "all" ? allCount : Number(counts[key] || 0));
+        });
+        $("nav-email-count").textContent = nf.format(Number(counts.review || 0));
+        const first = emailTotal ? emailOffset + 1 : 0;
+        const last = Math.min(emailOffset + data.items.length, emailTotal);
+        $("email-count").textContent = `${nf.format(emailTotal)} e-mails i den valgte visning`;
+        $("email-page").textContent = `Viser ${nf.format(first)}–${nf.format(last)} af ${nf.format(emailTotal)}`;
+        $("email-prev").disabled = emailOffset === 0;
+        $("email-next").disabled = emailOffset + emailLimit >= emailTotal;
         const options = data.municipalities.map((item) => `<option value="${esc(item.key)}">${esc(item.name)}</option>`).join("");
         $("email-rows").innerHTML = data.items.map((row) => {
           const confidence = row.confidence == null ? "—" : `${Math.round(Number(row.confidence) * 100)}%`;
           const excerpt = String(row.body_text || "").slice(0, 220);
-          return `<tr data-email-id="${esc(row.gmail_message_id)}"><td><strong>${esc(row.sender_name || row.sender_email)}</strong><div class="muted small">${esc(row.sender_email)}</div></td><td class="email-subject"><strong>${esc(row.subject || "Uden emne")}</strong><div class="muted small">${date(row.received_at)}</div><div class="muted small email-reason">${esc(excerpt)}</div></td><td class="email-reason"><span class="badge">${esc(row.classification || "ukendt")}</span> ${confidence}<div class="muted small">${esc(row.assignment_reason || "Ingen begrundelse")}</div></td><td><div class="email-actions"><select class="email-municipality"><option value="">Vælg kommune…</option>${options}</select><button type="button" data-action="assign">Tildel</button><button type="button" class="danger" data-action="ignore">Ignorér</button></div><label class="remember"><input class="remember-sender" type="checkbox"> Husk afsenderen</label></td></tr>`;
-        }).join("") || `<tr><td colspan="4" class="empty">Ingen e-mails kræver kontrol</td></tr>`;
+          const statusLabels = {review: "Til kontrol", ingested: "Indlæst", ignored: "Ignoreret", error: "Fejl", new: "Ny"};
+          const statusClass = row.status === "ingested" ? "ok" : row.status === "review" || row.status === "error" ? "bad" : "";
+          const municipality = row.municipality_name ? `<div class="muted small">${esc(row.municipality_name)}</div>` : "";
+          const assignment = `<select class="email-municipality"><option value="">Vælg kommune…</option>${options}</select><button type="button" data-action="assign">Tildel</button>`;
+          const ignore = `<button type="button" class="danger" data-action="ignore">${row.status === "ingested" ? "Markér ignoreret" : "Ignorér"}</button>`;
+          const actions = row.status === "ingested" ? ignore : `${assignment}${row.status === "ignored" ? "" : ignore}`;
+          const rememberLabel = row.status === "ingested" ? "Ignorér fremtidige mails fra afsenderen" : row.status === "ignored" ? "Husk den nye kommune for afsenderen" : "Husk afsenderen";
+          return `<tr data-email-id="${esc(row.gmail_message_id)}" data-email-status="${esc(row.status)}"><td><strong>${esc(row.sender_name || row.sender_email)}</strong><div class="muted small">${esc(row.sender_email)}</div></td><td class="email-subject"><strong>${esc(row.subject || "Uden emne")}</strong><div class="muted small">${date(row.received_at)}</div><div class="muted small email-reason">${esc(excerpt)}</div></td><td><span class="badge ${statusClass}">${esc(statusLabels[row.status] || row.status)}</span>${municipality}</td><td class="email-reason"><span class="badge">${esc(row.classification || "ukendt")}</span> ${confidence}<div class="muted small">${esc(row.assignment_reason || "Ingen begrundelse")}</div><div class="muted small">Kilde: ${esc(row.classification_source || "ukendt")} · afsenderregel: ${esc(row.sender_scope || "ukendt")}</div></td><td><div class="email-actions">${actions}</div><label class="remember"><input class="remember-sender" type="checkbox"> ${rememberLabel}</label></td></tr>`;
+        }).join("") || `<tr><td colspan="5" class="empty">Ingen e-mails i den valgte visning</td></tr>`;
       } catch (error) {
         $("email-count").textContent = `Kunne ikke hente e-mails: ${error.message}`;
-        $("email-rows").innerHTML = `<tr><td colspan="4" class="empty">Kontrolkøen kunne ikke indlæses</td></tr>`;
+        $("email-rows").innerHTML = `<tr><td colspan="5" class="empty">E-mailhistorikken kunne ikke indlæses</td></tr>`;
       }
     }
 
@@ -594,9 +629,9 @@
 
     async function emailAction(row, action) {
       const id = row.dataset.emailId;
-      const municipality = row.querySelector(".email-municipality").value;
+      const municipality = row.querySelector(".email-municipality")?.value || "";
       if (action === "assign" && !municipality) throw new Error("Vælg en kommune først");
-      const body = {municipality_key: municipality || null, remember_sender: row.querySelector(".remember-sender").checked};
+      const body = {municipality_key: municipality || null, remember_sender: row.querySelector(".remember-sender")?.checked || false};
       const response = await fetch(`/api/admin/emails/${encodeURIComponent(id)}/${action}`, {
         method: "POST",
         headers: {"Content-Type": "application/json", "X-NBK-Admin-Action": "1"},
@@ -625,6 +660,16 @@
       }
     }
     ["article-kind", "article-status", "article-source", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
+    document.querySelectorAll(".email-tab").forEach((tab) => tab.addEventListener("click", () => {
+      emailStatus = tab.dataset.emailStatus;
+      emailOffset = 0;
+      document.querySelectorAll(".email-tab").forEach((item) => {
+        const active = item === tab;
+        item.classList.toggle("active", active);
+        item.setAttribute("aria-selected", String(active));
+      });
+      refreshEmails();
+    }));
     document.querySelectorAll(".nav-item[data-page]").forEach((item) => item.addEventListener("click", () => {
       const hash = `#${item.dataset.page}`;
       if (location.hash === hash) showPage(item.dataset.page); else location.hash = item.dataset.page;
@@ -639,8 +684,11 @@
     $("email-rows").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
+      const row = button.closest("tr");
+      if (button.dataset.action === "ignore" && row.dataset.emailStatus === "ingested"
+          && !confirm("Markér e-mailen som ignoreret og fjern dens artikelkilde?")) return;
       button.disabled = true;
-      emailAction(button.closest("tr"), button.dataset.action).catch((error) => {
+      emailAction(row, button.dataset.action).catch((error) => {
         button.disabled = false;
         $("email-count").textContent = `Handlingen fejlede: ${error.message}`;
       });
@@ -652,6 +700,8 @@
     });
     $("article-prev").addEventListener("click", () => { articleOffset = Math.max(0, articleOffset - articleLimit); refreshArticles(); });
     $("article-next").addEventListener("click", () => { if (articleOffset + articleLimit < articleTotal) articleOffset += articleLimit; refreshArticles(); });
+    $("email-prev").addEventListener("click", () => { emailOffset = Math.max(0, emailOffset - emailLimit); refreshEmails(); });
+    $("email-next").addEventListener("click", () => { if (emailOffset + emailLimit < emailTotal) emailOffset += emailLimit; refreshEmails(); });
     $("gmail-connect").addEventListener("click", connectGmail);
     $("gmail-disconnect").addEventListener("click", disconnectGmail);
     $("signout").addEventListener("click", async () => {

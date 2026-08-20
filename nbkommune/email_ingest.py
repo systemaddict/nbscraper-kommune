@@ -272,7 +272,7 @@ def assign_email(conn, settings: Settings, gmail_message_id: str,
     row = repo.get_email_message(conn, gmail_message_id)
     if row is None:
         raise KeyError(gmail_message_id)
-    if row["status"] not in {"new", "review", "error"}:
+    if row["status"] not in {"new", "review", "error", "ignored"}:
         raise ValueError(f"email is already {row['status']}")
     target = registry(settings).get(municipality_key)
     if target is None:
@@ -312,9 +312,11 @@ def ignore_email(conn, gmail_message_id: str, *, remember_sender: bool,
     row = repo.get_email_message(conn, gmail_message_id)
     if row is None:
         raise KeyError(gmail_message_id)
-    if row["status"] not in {"new", "review", "error"}:
+    if row["status"] not in {"new", "review", "error", "ingested"}:
         raise ValueError(f"email is already {row['status']}")
     reason = f"ignored by {actor}"
+    if row["status"] == "ingested":
+        repo.remove_email_article_source(conn, gmail_message_id)
     if remember_sender:
         repo.upsert_sender_resolution(
             conn, sender_email=row["sender_email"], mode="ignore",
