@@ -34,11 +34,15 @@ api = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
 ]
+mcp = [
+    "fastmcp>=3,<4",             # MCP tools over stdio or authenticated HTTP
+]
 dev = [
     "pytest>=8",
     "respx>=0.21",               # httpx request mocking
     "ruff>=0.6",
     "mypy>=1.11",
+    "fastmcp>=3,<4",             # exercise the optional MCP surface in tests
 ]
 
 [project.scripts]

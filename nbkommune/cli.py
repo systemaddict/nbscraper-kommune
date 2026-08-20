@@ -288,6 +288,48 @@ def serve(
     )
 
 
+@app.command("mcp")
+def mcp(
+    http: bool = typer.Option(
+        False, "--http", help="Serve over streamable HTTP with bearer auth."
+    ),
+    host: Optional[str] = typer.Option(None, help="Override NBK_MCP_HTTP_HOST."),
+    port: Optional[int] = typer.Option(
+        None, min=1, max=65535, help="Override NBK_MCP_HTTP_PORT."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Expose the article search as an MCP server for AI clients.
+
+    stdio is intended for a local subprocess and has no network auth. ``--http``
+    binds a remote streamable-HTTP endpoint and requires NBK_MCP_AUTH_TOKENS.
+    """
+    _setup_logging(verbose)
+    try:
+        from nbkommune.mcp_server import build_mcp_server
+    except ImportError as exc:  # pragma: no cover - exercised by installations
+        raise typer.BadParameter(
+            'MCP dependencies are missing; install with pip install -e ".[mcp]"'
+        ) from exc
+
+    settings = get_settings()
+    if http:
+        try:
+            server = build_mcp_server(auth=True, settings=settings)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        server.run(
+            transport="http",
+            host=host or settings.mcp_http_host,
+            port=port or settings.mcp_http_port,
+        )
+        return
+
+    # stdout is the JSON-RPC channel for stdio, so suppress the FastMCP banner.
+    server = build_mcp_server(auth=False, settings=settings)
+    server.run(transport="stdio", show_banner=False)
+
+
 @app.command("stats")
 def stats(
     thin_only: bool = typer.Option(False, "--thin", help="Only kommuner with thin extractions."),
