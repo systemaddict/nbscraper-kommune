@@ -252,8 +252,9 @@ def test_bunny_connection_uses_closed_reads_and_baton_writes():
     assert isinstance(row["created_at"], datetime)
 
     result = conn.execute(
-        "INSERT INTO item (id, enabled) VALUES (%(id)s, %(enabled)s)",
-        {"id": 7, "enabled": True},
+        "INSERT INTO item (id, enabled, confidence) "
+        "VALUES (%(id)s, %(enabled)s, %(confidence)s)",
+        {"id": 7, "enabled": True, "confidence": 0.0},
     )
     assert result.rowcount == 1
     conn.commit()
@@ -261,8 +262,12 @@ def test_bunny_connection_uses_closed_reads_and_baton_writes():
 
     assert payloads[0]["requests"][-1] == {"type": "close"}
     write_stmt = payloads[1]["requests"][2]["stmt"]
-    assert write_stmt["sql"] == "INSERT INTO item (id, enabled) VALUES (:id, :enabled)"
+    assert write_stmt["sql"] == (
+        "INSERT INTO item (id, enabled, confidence) "
+        "VALUES (:id, :enabled, :confidence)"
+    )
     assert write_stmt["named_args"][1]["value"] == {"type": "integer", "value": "1"}
+    assert write_stmt["named_args"][2]["value"] == {"type": "float", "value": 0.0}
     assert payloads[2]["baton"] == "write-baton"
 
 

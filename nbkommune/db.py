@@ -145,14 +145,16 @@ class BunnyConnection:
         )
 
     @staticmethod
-    def _encode(value: Any) -> dict[str, str]:
+    def _encode(value: Any) -> dict[str, Any]:
         value = _normalise_param(value)
         if value is None:
             return {"type": "null"}
         if isinstance(value, int):
             return {"type": "integer", "value": str(value)}
         if isinstance(value, float):
-            return {"type": "float", "value": str(value)}
+            # Hrana encodes int64 values as decimal strings to avoid JSON's
+            # precision limit, but float values are JSON numbers (f64).
+            return {"type": "float", "value": value}
         if isinstance(value, bytes):
             return {"type": "blob", "base64": base64.b64encode(value).decode("ascii")}
         return {"type": "text", "value": str(value)}
