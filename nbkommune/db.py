@@ -272,6 +272,16 @@ class BunnyConnection:
             return
         try:
             self._post([{"type": "execute", "stmt": {"sql": "ROLLBACK"}}], close=True)
+        except Exception as exc:
+            # A failed statement can invalidate or expire its Hrana stream before
+            # the caller reaches the error handler.  There is then nothing useful
+            # left to roll back, and surfacing this secondary failure masks the
+            # original scrape error and crashes the worker.  Discard the dead
+            # stream locally; the next write opens a fresh transaction.
+            logger.warning(
+                "Bunny Database rollback failed; discarded transaction stream: %s",
+                exc,
+            )
         finally:
             self._baton = None
             self._request_url = self._pipeline_url

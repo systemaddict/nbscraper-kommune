@@ -271,6 +271,68 @@ def test_bunny_connection_uses_closed_reads_and_baton_writes():
     assert payloads[2]["baton"] == "write-baton"
 
 
+def test_bunny_connection_discards_stream_when_rollback_request_fails():
+    payloads: list[dict] = []
+    request_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        payloads.append(payload)
+        request_paths.append(request.url.path)
+        if len(payloads) == 1:
+            return httpx.Response(200, json={
+                "baton": "expired-baton",
+                "base_url": "/v2/pipeline/expired-stream",
+                "results": [
+                    {"type": "ok", "response": {"type": "execute", "result": {}}},
+                    {"type": "ok", "response": {"type": "execute", "result": {}}},
+                    {"type": "ok", "response": {
+                        "type": "execute",
+                        "result": {"affected_row_count": 1},
+                    }},
+                ],
+            })
+        if len(payloads) == 2:
+            return httpx.Response(410, text="transaction stream expired")
+        if len(payloads) == 3:
+            return httpx.Response(200, json={
+                "baton": "fresh-baton",
+                "base_url": None,
+                "results": [
+                    {"type": "ok", "response": {"type": "execute", "result": {}}},
+                    {"type": "ok", "response": {"type": "execute", "result": {}}},
+                    {"type": "ok", "response": {
+                        "type": "execute",
+                        "result": {"affected_row_count": 1},
+                    }},
+                ],
+            })
+        return httpx.Response(200, json={
+            "baton": None,
+            "base_url": None,
+            "results": [
+                {"type": "ok", "response": {"type": "execute", "result": {}}},
+                {"type": "ok", "response": {"type": "close"}},
+            ],
+        })
+
+    conn = db.BunnyConnection(
+        "libsql://database.example/",
+        "secret",
+        transport=httpx.MockTransport(handler),
+    )
+    conn.execute("INSERT INTO item (id) VALUES (?)", (1,))
+    conn.rollback()
+    conn.execute("INSERT INTO item (id) VALUES (?)", (2,))
+    conn.rollback()
+    conn.close()
+
+    assert payloads[1]["baton"] == "expired-baton"
+    assert "baton" not in payloads[2]
+    assert request_paths[1] == "/v2/pipeline/expired-stream"
+    assert request_paths[2] == "/v2/pipeline"
+
+
 def test_bunny_connection_omits_unused_named_arguments():
     payloads: list[dict] = []
 
