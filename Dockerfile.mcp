@@ -1,5 +1,5 @@
 # MCP server — the same FTS5 article search as the dashboard, exposed to MCP
-# clients that support a configured bearer credential over authenticated HTTP.
+# clients that support the standard interactive OAuth flow over HTTP.
 
 FROM python:3.12-slim
 
@@ -23,5 +23,5 @@ ENV PYTHONUNBUFFERED=1 \
 
 EXPOSE 8766
 
-# HTTP mode refuses to start unless NBK_MCP_AUTH_TOKENS is configured.
+# HTTP mode refuses to start unless the OAuth discovery config is complete.
 CMD ["nbk", "mcp", "--http", "--host", "0.0.0.0", "--port", "8766"]

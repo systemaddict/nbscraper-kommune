@@ -44,14 +44,23 @@
       button.textContent = "Logger ind…";
       error.textContent = "";
       try {
+        const query = new URLSearchParams(location.search);
+        const body = { email: form.email.value, password: form.password.value, rememberMe: true };
+        if (query.has("client_id") && query.has("sig")) {
+          body.oauth_query = location.search.slice(1);
+        }
         const response = await fetch("/api/auth/sign-in/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.value, password: form.password.value, rememberMe: true }),
+          body: JSON.stringify(body),
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           error.textContent = payload.message || "Email eller adgangskode er forkert";
+          return;
+        }
+        if (payload.url) {
+          location.assign(payload.url);
           return;
         }
         const next = new URLSearchParams(location.search).get("next");

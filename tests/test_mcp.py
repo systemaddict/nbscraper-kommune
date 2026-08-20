@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import time
 
 import pytest
+import respx
+from authlib.jose import JsonWebKey, jwt
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from fastmcp import Client
 
@@ -90,12 +95,12 @@ def test_search_articles_validates_query_and_bounds_pagination(tmp_path):
         _search_articles(settings, query="x" * 201)
 
 
-def test_http_mcp_fails_closed_without_auth_tokens(tmp_path):
-    with pytest.raises(ValueError, match="NBK_MCP_AUTH_TOKENS"):
+def test_http_mcp_fails_closed_without_oauth_config(tmp_path):
+    with pytest.raises(ValueError, match="NBK_MCP_BASE_URL"):
         build_mcp_server(auth=True, settings=_settings(tmp_path))
 
 
-def test_stdio_mcp_does_not_require_auth_tokens(tmp_path):
+def test_stdio_mcp_does_not_require_oauth_config(tmp_path):
     server = build_mcp_server(auth=False, settings=_settings(tmp_path))
 
     assert server.name == "nb-kommune"
@@ -121,12 +126,45 @@ def test_mcp_protocol_exposes_read_only_search_tool(tmp_path):
     assert result.structured_content["items"][0]["id"] == "article-1"
 
 
-def test_http_transport_rejects_missing_and_wrong_bearer_tokens(tmp_path):
-    token = "mcp-client-token-" + "x" * 32
+def test_http_transport_discovers_oauth_and_validates_resource_token(tmp_path):
+    issuer = "https://dashboard.example.com/api/auth"
+    resource = "https://mcp.example.com/mcp"
+    jwks_url = f"{issuer}/jwks"
     server = build_mcp_server(
         auth=True,
-        settings=_settings(tmp_path, mcp_auth_tokens=[token]),
+        settings=_settings(
+            tmp_path,
+            mcp_base_url="https://mcp.example.com",
+            mcp_oauth_issuer=issuer,
+            mcp_oauth_jwks_url=jwks_url,
+        ),
     )
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_pem = private_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    private_pem = private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    public_jwk = JsonWebKey.import_key(public_pem).as_dict()
+    public_jwk.update({"alg": "RS256", "kid": "test-key", "use": "sig"})
+    now = int(time.time())
+    token = jwt.encode(
+        {"alg": "RS256", "kid": "test-key"},
+        {
+            "iss": issuer,
+            "aud": resource,
+            "sub": "test-user",
+            "client_id": "test-client",
+            "scope": "search:articles",
+            "iat": now,
+            "exp": now + 300,
+        },
+        private_pem,
+    ).decode()
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -142,7 +180,8 @@ def test_http_transport_rejects_missing_and_wrong_bearer_tokens(tmp_path):
         "content-type": "application/json",
     }
 
-    with TestClient(server.http_app()) as client:
+    with respx.mock(assert_all_called=True) as router, TestClient(server.http_app()) as client:
+        router.get(jwks_url).respond(json={"keys": [public_jwk]})
         assert client.post("/mcp", headers=headers, json=payload).status_code == 401
         assert client.post(
             "/mcp",

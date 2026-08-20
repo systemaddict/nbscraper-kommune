@@ -46,19 +46,17 @@ def test_configured_api_token_must_be_strong():
         ).validate_auth()
 
 
-def test_mcp_auth_tokens_parse_from_csv_and_http_fails_closed():
-    first = "first-" + "x" * 32
-    second = "second-" + "y" * 32
-    settings = Settings(_env_file=None, mcp_auth_tokens=f"{first}, {second} ,")
+def test_mcp_oauth_config_fails_closed():
+    settings = Settings(
+        _env_file=None,
+        mcp_base_url="https://mcp.example.com",
+        mcp_oauth_issuer="https://dashboard.example.com/api/auth",
+        mcp_oauth_jwks_url="https://dashboard.example.com/api/auth/jwks",
+    )
+    settings.require_mcp_oauth()
 
-    assert settings.mcp_auth_tokens == [first, second]
-    settings.require_mcp_auth()
-
-    with pytest.raises(ValueError, match="NBK_MCP_AUTH_TOKENS"):
-        Settings(_env_file=None).require_mcp_auth()
-
-    with pytest.raises(ValueError, match="at least 32"):
-        Settings(_env_file=None, mcp_auth_tokens=["too-short"]).require_mcp_auth()
+    with pytest.raises(ValueError, match="NBK_MCP_BASE_URL"):
+        Settings(_env_file=None).require_mcp_oauth()
 
 
 def test_enabled_gmail_requires_oauth_and_openrouter_secrets():

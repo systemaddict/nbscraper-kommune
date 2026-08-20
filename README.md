@@ -128,7 +128,7 @@ nbk gmail --now                    # poll Gmail inline for diagnostics
 nbk worker --once --max-tasks 20   # drain what is due, then exit
 nbk serve                          # authenticated status API + dashboard on :8000
 nbk mcp                            # local MCP over stdio
-nbk mcp --http                     # remote MCP on :8766 with bearer auth
+nbk mcp --http                     # remote MCP on :8766 with OAuth
 nbk stats                          # per-kommune corpus + extraction health
 nbk queue / nbk errors             # what is pending, what is failing
 nbk backfill aarhus --limit 200    # ingest the still-listed backlog
@@ -195,11 +195,11 @@ for citations.
 
 There are two transports:
 
-- `nbk mcp` uses stdio for a local client. It has no network surface and no
-  bearer auth; give the subprocess the database environment variables.
-- `nbk mcp --http` uses remote streamable HTTP at `/mcp/`. It fails to start
-  unless `NBK_MCP_AUTH_TOKENS` contains at least one comma-separated bearer
-  token. Configure one token per client so it can be revoked independently.
+- `nbk mcp` uses stdio for a local client. It has no network surface or auth;
+  give the subprocess the database environment variables.
+- `nbk mcp --http` uses remote streamable HTTP at `/mcp`. ChatGPT and Claude
+  discover the OAuth 2.1 authorization server automatically and send the user
+  through the existing dashboard login and a read-only consent screen.
 
 For remote deployment, build [Dockerfile.mcp](Dockerfile.mcp) as its own
 service and attach the same Bunny Database as the worker/dashboard:
@@ -207,27 +207,21 @@ service and attach the same Bunny Database as the worker/dashboard:
 ```text
 BUNNY_DATABASE_URL=libsql://...
 BUNNY_DATABASE_AUTH_TOKEN=...
-NBK_MCP_AUTH_TOKENS=<client-1-token>,<client-2-token>
+NBK_MCP_BASE_URL=https://<mcp-host>
+NBK_MCP_OAUTH_ISSUER=https://<dashboard-host>/api/auth
+NBK_MCP_OAUTH_JWKS_URL=https://<dashboard-host>/api/auth/jwks
 ```
 
 ```bash
 docker build -f Dockerfile.mcp -t nbscraper-kommune-mcp .
-# Client URL: https://<mcp-host>/mcp/
-# Header: Authorization: Bearer <one configured token>
+# Client URL: https://<mcp-host>/mcp
 ```
 
-The static bearer verifier and fail-closed HTTP behaviour match the MCP layer
-in NBSubstans. Generate tokens with `openssl rand -hex 32`. The MCP service is
-read-only and does not expose dashboard status, Gmail or admin actions.
-
-The static token can be supplied by MCP clients that support custom bearer
-credentials, including an OpenAI Responses API integration via the MCP tool's
-`authorization` or `headers` field. A direct authenticated connection in the
-ChatGPT Plugins UI is a different auth mode: OpenAI currently requires an OAuth
-2.1 authorization flow there and does not accept a custom API key. Supporting
-that UI therefore requires an OAuth front door in addition to this deliberately
-NBSubstans-compatible token layer. See the official [OpenAI MCP auth
-guide](https://developers.openai.com/plugins/build/auth).
+The dashboard's Better Auth service provides dynamic client registration,
+authorization-code + PKCE, consent, refresh tokens, discovery metadata and a
+public JWKS. The MCP service validates resource-bound JWTs and requires the
+`search:articles` scope. It is read-only and does not expose dashboard status,
+Gmail or admin actions.
 
 ### Gmail inbox ingestion
 

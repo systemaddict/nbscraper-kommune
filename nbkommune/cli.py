@@ -291,7 +291,7 @@ def serve(
 @app.command("mcp")
 def mcp(
     http: bool = typer.Option(
-        False, "--http", help="Serve over streamable HTTP with bearer auth."
+        False, "--http", help="Serve over streamable HTTP with OAuth."
     ),
     host: Optional[str] = typer.Option(None, help="Override NBK_MCP_HTTP_HOST."),
     port: Optional[int] = typer.Option(
@@ -302,7 +302,7 @@ def mcp(
     """Expose the article search as an MCP server for AI clients.
 
     stdio is intended for a local subprocess and has no network auth. ``--http``
-    binds a remote streamable-HTTP endpoint and requires NBK_MCP_AUTH_TOKENS.
+    binds a remote streamable-HTTP endpoint and requires OAuth discovery config.
     """
     _setup_logging(verbose)
     try:
