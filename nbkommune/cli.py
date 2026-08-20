@@ -7,7 +7,7 @@ site without a worker running.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import typer
 from rich.console import Console
@@ -318,10 +318,21 @@ def mcp(
             server = build_mcp_server(auth=True, settings=settings)
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
+        if bool(settings.mcp_ssl_certfile) != bool(settings.mcp_ssl_keyfile):
+            raise typer.BadParameter(
+                "NBK_MCP_SSL_CERTFILE and NBK_MCP_SSL_KEYFILE must be set together"
+            )
+        transport_options: dict[str, Any] = {}
+        if settings.mcp_ssl_certfile and settings.mcp_ssl_keyfile:
+            transport_options["uvicorn_config"] = {
+                "ssl_certfile": str(settings.mcp_ssl_certfile),
+                "ssl_keyfile": str(settings.mcp_ssl_keyfile),
+            }
         server.run(
             transport="http",
             host=host or settings.mcp_http_host,
             port=port or settings.mcp_http_port,
+            **transport_options,
         )
         return
 

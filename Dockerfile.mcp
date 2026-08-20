@@ -4,13 +4,14 @@
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl \
+        ca-certificates curl openssl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY nbkommune ./nbkommune
+COPY scripts/run-mcp.sh /usr/local/bin/run-mcp
 RUN pip install --no-cache-dir -e ".[mcp]"
 
 RUN groupadd --gid 1001 app && useradd --uid 1001 --gid 1001 -m app
@@ -23,5 +24,5 @@ ENV PYTHONUNBUFFERED=1 \
 
 EXPOSE 8766
 
-# HTTP mode refuses to start unless the OAuth discovery config is complete.
-CMD ["nbk", "mcp", "--http", "--host", "0.0.0.0", "--port", "8766"]
+# Generate a short-lived origin certificate before starting authenticated MCP.
+CMD ["sh", "/usr/local/bin/run-mcp"]
