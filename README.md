@@ -94,6 +94,7 @@ nbkommune/
   repositories.py  All SQLite-compatible SQL. Nothing else touches the DB.
   db.py            Bunny libSQL/HTTP adapter + schema (idempotent)
   api.py           Read-only status API; serves the dashboard from the same process
+  mcp_server.py    Natural-language tool facade over the same article search
   static/          Dependency-free, shadcn-inspired operational dashboard
   serve.py         Supervises FastAPI behind the Better Auth gateway
   cli.py           The nbk CLI
@@ -126,6 +127,8 @@ nbk gmail                          # queue the singleton inbox collector
 nbk gmail --now                    # poll Gmail inline for diagnostics
 nbk worker --once --max-tasks 20   # drain what is due, then exit
 nbk serve                          # authenticated status API + dashboard on :8000
+nbk mcp                            # local MCP over stdio
+nbk mcp --http                     # remote MCP on :8766 with bearer auth
 nbk stats                          # per-kommune corpus + extraction health
 nbk queue / nbk errors             # what is pending, what is failing
 nbk backfill aarhus --limit 200    # ingest the still-listed backlog
@@ -180,6 +183,51 @@ Authorization: Bearer <the same value>
 curl -H "Authorization: Bearer $NBK_API_TOKEN" \
   "$NBK_API_URL/api/articles?status=ingested&limit=100&offset=0"
 ```
+
+### MCP access for Claude, ChatGPT and other clients
+
+The MCP server exposes one model-facing tool, `search_articles`, backed by the
+same FTS5 index and repository query as the dashboard search. The client model
+turns a natural-language question into Danish keywords plus optional filters
+for municipality, article type, ingestion status and source. No extra LLM or
+search index runs in this service, and every result contains the original URL
+for citations.
+
+There are two transports:
+
+- `nbk mcp` uses stdio for a local client. It has no network surface and no
+  bearer auth; give the subprocess the database environment variables.
+- `nbk mcp --http` uses remote streamable HTTP at `/mcp/`. It fails to start
+  unless `NBK_MCP_AUTH_TOKENS` contains at least one comma-separated bearer
+  token. Configure one token per client so it can be revoked independently.
+
+For remote deployment, build [Dockerfile.mcp](Dockerfile.mcp) as its own
+service and attach the same Bunny Database as the worker/dashboard:
+
+```text
+BUNNY_DATABASE_URL=libsql://...
+BUNNY_DATABASE_AUTH_TOKEN=...
+NBK_MCP_AUTH_TOKENS=<client-1-token>,<client-2-token>
+```
+
+```bash
+docker build -f Dockerfile.mcp -t nbscraper-kommune-mcp .
+# Client URL: https://<mcp-host>/mcp/
+# Header: Authorization: Bearer <one configured token>
+```
+
+The static bearer verifier and fail-closed HTTP behaviour match the MCP layer
+in NBSubstans. Generate tokens with `openssl rand -hex 32`. The MCP service is
+read-only and does not expose dashboard status, Gmail or admin actions.
+
+The static token can be supplied by MCP clients that support custom bearer
+credentials, including an OpenAI Responses API integration via the MCP tool's
+`authorization` or `headers` field. A direct authenticated connection in the
+ChatGPT Plugins UI is a different auth mode: OpenAI currently requires an OAuth
+2.1 authorization flow there and does not accept a custom API key. Supporting
+that UI therefore requires an OAuth front door in addition to this deliberately
+NBSubstans-compatible token layer. See the official [OpenAI MCP auth
+guide](https://developers.openai.com/plugins/build/auth).
 
 ### Gmail inbox ingestion
 

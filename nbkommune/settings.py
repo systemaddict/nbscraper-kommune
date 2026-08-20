@@ -177,6 +177,14 @@ class Settings(BaseSettings):
     # independently. Empty disables service access.
     api_token: SecretStr = Field(default=SecretStr(""))
 
+    # ── MCP server ─────────────────────────────────────────────
+    # The local stdio transport has no network surface and needs no auth. The
+    # remote streamable-HTTP transport fails closed unless at least one token
+    # is configured. Multiple comma-separated tokens allow per-client rotation.
+    mcp_auth_tokens: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    mcp_http_host: str = Field(default="127.0.0.1")
+    mcp_http_port: int = Field(default=8766, ge=1, le=65535)
+
     # ── Gmail ingestion / AI routing ────────────────────────────────────
     # Disabled by default so existing workers do not acquire a new external
     # dependency merely by upgrading. The app-level OAuth credentials are
@@ -252,13 +260,24 @@ class Settings(BaseSettings):
     min_body_chars: int = Field(default=200)
 
     @field_validator("targets", "scrapedo_hosts", "scrapedo_fallback_hosts",
-                     "scrapedo_render_hosts", "user_agent_fallbacks", mode="before")
+                     "scrapedo_render_hosts", "user_agent_fallbacks",
+                     "mcp_auth_tokens", mode="before")
     @classmethod
     def _split_csv(cls, v):
         """Accept comma-separated env values (NBK_TARGETS=aarhus,odder)."""
         if isinstance(v, str):
             return [p.strip() for p in v.split(",") if p.strip()]
         return v
+
+    def require_mcp_auth(self) -> None:
+        """Fail before binding the remote MCP server without credentials."""
+        if not self.mcp_auth_tokens:
+            raise ValueError(
+                "NBK_MCP_AUTH_TOKENS is required for `nbk mcp --http` "
+                "(set one or more comma-separated bearer tokens)"
+            )
+        if any(len(token) < 32 for token in self.mcp_auth_tokens):
+            raise ValueError("every NBK_MCP_AUTH_TOKENS token must be at least 32 characters")
 
     def validate_auth(self) -> None:
         """Fail before binding a public port when auth configuration is unsafe."""
