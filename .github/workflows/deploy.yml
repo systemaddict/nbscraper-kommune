@@ -38,6 +38,17 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      - name: Build and push MCP image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.mcp
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:mcp-latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:mcp-${{ github.sha }}
+
       - name: Update worker image
         if: ${{ vars.BUNNY_APP_ID != '' }}
         uses: BunnyWay/actions/container-update-image@main
@@ -55,3 +66,12 @@ jobs:
           api_key: ${{ secrets.BUNNYNET_API_KEY }}
           container: dashboard
           image_tag: ${{ github.sha }}
+
+      - name: Update MCP image
+        if: ${{ vars.BUNNY_MCP_ENABLED == 'true' && vars.BUNNY_APP_ID != '' }}
+        uses: BunnyWay/actions/container-update-image@main
+        with:
+          app_id: ${{ vars.BUNNY_APP_ID }}
+          api_key: ${{ secrets.BUNNYNET_API_KEY }}
+          container: mcp
+          image_tag: mcp-${{ github.sha }}
