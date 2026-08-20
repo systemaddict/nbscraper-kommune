@@ -171,6 +171,11 @@ class Settings(BaseSettings):
     auth_bootstrap_password: SecretStr = Field(default=SecretStr(""))
     # Loopback port for FastAPI behind the public Better Auth gateway.
     auth_internal_port: int = Field(default=8001, ge=1, le=65535)
+    # Read-only machine credential for GET /api/articles. This is intentionally
+    # separate from the dashboard session/signing secret so NBSubstans can be
+    # granted the narrowest possible access and the credential can be rotated
+    # independently. Empty disables service access.
+    api_token: SecretStr = Field(default=SecretStr(""))
 
     # ── Gmail ingestion / AI routing ────────────────────────────────────
     # Disabled by default so existing workers do not acquire a new external
@@ -268,6 +273,9 @@ class Settings(BaseSettings):
             )
         if password and len(password) < 8:
             raise ValueError("NBK_AUTH_BOOTSTRAP_PASSWORD must be at least 8 characters")
+        api_token = self.api_token.get_secret_value()
+        if api_token and len(api_token) < 32:
+            raise ValueError("NBK_API_TOKEN must be at least 32 characters")
 
     def validate_gmail(self) -> None:
         """Fail at worker startup when an enabled collector cannot operate.

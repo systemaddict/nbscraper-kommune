@@ -35,6 +35,17 @@ def test_auth_bootstrap_credentials_must_be_complete():
         ).validate_auth()
 
 
+def test_configured_api_token_must_be_strong():
+    with pytest.raises(ValueError, match="NBK_API_TOKEN"):
+        Settings(
+            _env_file=None,
+            auth_enabled=True,
+            auth_base_url="https://dashboard.example.com",
+            auth_secret="a" * 32,
+            api_token="too-short",
+        ).validate_auth()
+
+
 def test_enabled_gmail_requires_oauth_and_openrouter_secrets():
     settings = Settings(_env_file=None, gmail_enabled=True)
 

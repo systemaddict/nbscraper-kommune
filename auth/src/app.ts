@@ -57,24 +57,33 @@ export function createGateway(upstream: string): Hono {
   });
 
   app.all("*", async (context) => {
-    const state = await sessionState(context.req.raw.headers);
-    if (state.status === "error") return unavailable(context.req.raw);
-    if (state.status === "unauthenticated") {
-      if (context.req.method === "GET" && wantsHtml(context.req.raw)) {
-        const url = new URL(context.req.url);
-        const next = encodeURIComponent(`${url.pathname}${url.search}`);
-        return context.redirect(`/login?next=${next}`);
-      }
-      return context.json({ detail: "Authentication required" }, 401);
-    }
-
     const incoming = context.req.raw;
     const target = new URL(incoming.url);
+    const hasArticleBearer =
+      incoming.method === "GET" &&
+      target.pathname === "/api/articles" &&
+      /^Bearer\s+\S+/i.test(incoming.headers.get("authorization") ?? "");
+
+    let userEmail: string | undefined;
+    if (!hasArticleBearer) {
+      const state = await sessionState(incoming.headers);
+      if (state.status === "error") return unavailable(incoming);
+      if (state.status === "unauthenticated") {
+        if (incoming.method === "GET" && wantsHtml(incoming)) {
+          const url = new URL(incoming.url);
+          const next = encodeURIComponent(`${url.pathname}${url.search}`);
+          return context.redirect(`/login?next=${next}`);
+        }
+        return context.json({ detail: "Authentication required" }, 401);
+      }
+      userEmail = state.session.user.email;
+    }
+
     const destination = new URL(`${target.pathname}${target.search}`, upstream);
     const headers = new Headers(incoming.headers);
     headers.delete("host");
     headers.delete("x-nbk-user-email");
-    headers.set("x-nbk-user-email", state.session.user.email);
+    if (userEmail) headers.set("x-nbk-user-email", userEmail);
     const requestInit: RequestInit & { duplex: "half" } = {
       method: incoming.method,
       headers,

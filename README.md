@@ -156,15 +156,30 @@ BUNNY_DATABASE_AUTH_TOKEN
 
 The dashboard uses Better Auth email/password sessions stored in the same Bunny
 Database. Only `/healthz`, `/login`, and Better Auth's `/api/auth/*` handler are
-public. `/`, `/api/status`, and `/api/articles` require a valid session. Public
-signup is disabled; the first user is created from deployment-only bootstrap
-credentials.
+public. `/`, `/api/status`, and `/api/articles` require a valid session. The
+article list additionally accepts the dedicated read-only `NBK_API_TOKEN` as a
+Bearer token so another NB service can consume it without a browser session.
+The token does not grant access to status or admin/write routes. Public signup
+is disabled; the first user is created from deployment-only bootstrap credentials.
 
 The article table includes native FTS5 search across title, summary and body.
 Use the dashboard search box or `GET /api/articles?q=cykelsti`; search can be
 combined with the municipality, type and status filters. Results are ranked by
 relevance, with title matches weighted highest. The index is backfilled once on
 upgrade and then maintained by database triggers.
+
+For server-to-server access, set a random token on the dashboard container and
+send it in the standard header:
+
+```text
+NBK_API_TOKEN=<at least 32 random characters>
+Authorization: Bearer <the same value>
+```
+
+```bash
+curl -H "Authorization: Bearer $NBK_API_TOKEN" \
+  "$NBK_API_URL/api/articles?status=ingested&limit=100&offset=0"
+```
 
 ### Gmail inbox ingestion
 
@@ -238,6 +253,7 @@ NBK_AUTH_BASE_URL=https://your-dashboard.example.com
 NBK_AUTH_SECRET=<at least 32 random characters>
 NBK_AUTH_BOOTSTRAP_EMAIL=<initial login email>
 NBK_AUTH_BOOTSTRAP_PASSWORD=<initial password, at least 8 characters>
+NBK_API_TOKEN=<at least 32 random characters; dashboard container only>
 ```
 
 After the first successful login, the two `NBK_AUTH_BOOTSTRAP_*` values can be

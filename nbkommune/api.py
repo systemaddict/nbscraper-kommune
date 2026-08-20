@@ -8,6 +8,7 @@ except ``/healthz``.
 """
 from __future__ import annotations
 
+import secrets
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from importlib.resources import files
@@ -108,6 +109,29 @@ def _authenticated_actor(request: Request) -> str:
     return actor
 
 
+def _require_article_reader(request: Request) -> None:
+    """Allow a dashboard session or the dedicated read-only service token."""
+    settings: Settings = request.app.state.settings
+    if not settings.auth_enabled:
+        return
+
+    # The public gateway strips any caller-provided value and injects this only
+    # after validating a Better Auth session.
+    if request.headers.get("x-nbk-user-email"):
+        return
+
+    configured = settings.api_token.get_secret_value()
+    scheme, _, supplied = request.headers.get("authorization", "").partition(" ")
+    if (configured and scheme.casefold() == "bearer" and supplied
+            and secrets.compare_digest(supplied, configured)):
+        return
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="nbscraper-kommune status",
@@ -129,6 +153,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/articles")
     def articles(
         conn: Annotated[Connection, Depends(get_conn)],
+        _reader: Annotated[None, Depends(_require_article_reader)],
         municipality: str | None = None,
         kind: Literal["nyhed", "pressemeddelelse"] | None = None,
         status: Literal["listed", "ingested", "gone"] | None = None,

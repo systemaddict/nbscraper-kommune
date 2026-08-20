@@ -25,10 +25,15 @@ def _target() -> SimpleNamespace:
     )
 
 
-def _settings(tmp_path) -> Settings:
+def _settings(tmp_path, **overrides) -> Settings:
+    values = {
+        "auth_enabled": False,
+        "BUNNY_DATABASE_URL": f"file:{tmp_path / 'status.db'}",
+    }
+    values.update(overrides)
     return Settings(
         _env_file=None,
-        BUNNY_DATABASE_URL=f"file:{tmp_path / 'status.db'}",
+        **values,
     )
 
 
@@ -144,6 +149,31 @@ def test_articles_api_is_public_filterable_and_paginated(tmp_path):
     }
 
     assert client.get("/api/articles", params={"kind": "invalid"}).status_code == 422
+
+
+def test_articles_api_accepts_only_valid_service_bearer_or_gateway_session(tmp_path):
+    token = "service-token-" + "x" * 32
+    settings = _settings(tmp_path, auth_enabled=True, api_token=token)
+    _seed(settings)
+    client = TestClient(create_app(settings))
+
+    missing = client.get("/api/articles")
+    wrong = client.get(
+        "/api/articles", headers={"Authorization": "Bearer wrong-token"}
+    )
+    service = client.get(
+        "/api/articles", headers={"Authorization": f"Bearer {token}"}
+    )
+    dashboard = client.get(
+        "/api/articles", headers={"X-NBK-User-Email": "admin@example.test"}
+    )
+
+    assert missing.status_code == 401
+    assert missing.headers["www-authenticate"] == "Bearer"
+    assert wrong.status_code == 401
+    assert service.status_code == 200
+    assert service.json()["total"] == 2
+    assert dashboard.status_code == 200
 
 
 def test_articles_api_full_text_searches_body_and_combines_filters(tmp_path):
