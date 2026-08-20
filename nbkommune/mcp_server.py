@@ -9,14 +9,16 @@ dashboard's article search.
 Two transports share this definition:
 
 * stdio is a local subprocess with no network surface and no auth;
-* streamable HTTP is protected by configured static bearer tokens.
+* streamable HTTP uses OAuth discovery and resource-bound access tokens.
 """
 from __future__ import annotations
 
 from typing import Any, Literal
 
 from fastmcp import FastMCP
-from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+from fastmcp.server.auth import RemoteAuthProvider
+from fastmcp.server.auth.providers.jwt import JWTVerifier
+from pydantic import AnyHttpUrl
 
 from nbkommune import db
 from nbkommune import repositories as repo
@@ -35,14 +37,24 @@ titelmatches højest. Hvert resultat har et `url`-felt; brug det til kildehenvis
 """
 
 
-def _build_auth(settings: Settings) -> StaticTokenVerifier:
-    """Build the same fail-closed static bearer verifier as NBSubstans MCP."""
-    settings.require_mcp_auth()
-    tokens = {
-        token: {"client_id": f"nb-kommune-mcp-{index + 1}", "scopes": []}
-        for index, token in enumerate(settings.mcp_auth_tokens)
-    }
-    return StaticTokenVerifier(tokens=tokens)
+def _build_auth(settings: Settings) -> RemoteAuthProvider:
+    """Delegate login to Better Auth and validate its resource-bound JWTs."""
+    settings.require_mcp_oauth()
+    resource = f"{settings.mcp_base_url.rstrip('/')}/mcp"
+    verifier = JWTVerifier(
+        jwks_uri=settings.mcp_oauth_jwks_url,
+        issuer=settings.mcp_oauth_issuer.rstrip("/"),
+        audience=resource,
+        algorithm="RS256",
+        required_scopes=["search:articles"],
+    )
+    return RemoteAuthProvider(
+        token_verifier=verifier,
+        authorization_servers=[AnyHttpUrl(settings.mcp_oauth_issuer)],
+        base_url=settings.mcp_base_url,
+        scopes_supported=["openid", "offline_access", "search:articles"],
+        resource_name="NB Kommune",
+    )
 
 
 def _search_articles(

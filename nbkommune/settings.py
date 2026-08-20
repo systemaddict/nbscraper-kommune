@@ -179,11 +179,13 @@ class Settings(BaseSettings):
 
     # ── MCP server ─────────────────────────────────────────────
     # The local stdio transport has no network surface and needs no auth. The
-    # remote streamable-HTTP transport fails closed unless at least one token
-    # is configured. Multiple comma-separated tokens allow per-client rotation.
-    mcp_auth_tokens: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # remote transport delegates interactive OAuth to the existing Better Auth
+    # service and validates its resource-bound JWTs through the public JWKS.
     mcp_http_host: str = Field(default="127.0.0.1")
     mcp_http_port: int = Field(default=8766, ge=1, le=65535)
+    mcp_base_url: str = Field(default="")
+    mcp_oauth_issuer: str = Field(default="")
+    mcp_oauth_jwks_url: str = Field(default="")
 
     # ── Gmail ingestion / AI routing ────────────────────────────────────
     # Disabled by default so existing workers do not acquire a new external
@@ -260,8 +262,7 @@ class Settings(BaseSettings):
     min_body_chars: int = Field(default=200)
 
     @field_validator("targets", "scrapedo_hosts", "scrapedo_fallback_hosts",
-                     "scrapedo_render_hosts", "user_agent_fallbacks",
-                     "mcp_auth_tokens", mode="before")
+                     "scrapedo_render_hosts", "user_agent_fallbacks", mode="before")
     @classmethod
     def _split_csv(cls, v):
         """Accept comma-separated env values (NBK_TARGETS=aarhus,odder)."""
@@ -269,15 +270,16 @@ class Settings(BaseSettings):
             return [p.strip() for p in v.split(",") if p.strip()]
         return v
 
-    def require_mcp_auth(self) -> None:
-        """Fail before binding the remote MCP server without credentials."""
-        if not self.mcp_auth_tokens:
-            raise ValueError(
-                "NBK_MCP_AUTH_TOKENS is required for `nbk mcp --http` "
-                "(set one or more comma-separated bearer tokens)"
-            )
-        if any(len(token) < 32 for token in self.mcp_auth_tokens):
-            raise ValueError("every NBK_MCP_AUTH_TOKENS token must be at least 32 characters")
+    def require_mcp_oauth(self) -> None:
+        """Fail before binding remote MCP without complete OAuth discovery."""
+        required = {
+            "NBK_MCP_BASE_URL": self.mcp_base_url,
+            "NBK_MCP_OAUTH_ISSUER": self.mcp_oauth_issuer,
+            "NBK_MCP_OAUTH_JWKS_URL": self.mcp_oauth_jwks_url,
+        }
+        missing = [name for name, value in required.items() if not value.strip()]
+        if missing:
+            raise ValueError(f"{', '.join(missing)} required for `nbk mcp --http`")
 
     def validate_auth(self) -> None:
         """Fail before binding a public port when auth configuration is unsafe."""

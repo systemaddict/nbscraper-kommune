@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { auth } from "./auth.js";
 
 const loginPath = fileURLToPath(new URL("../static/login.html", import.meta.url));
+const consentPath = fileURLToPath(new URL("../static/consent.html", import.meta.url));
 
 function wantsHtml(request: Request): boolean {
   return request.headers.get("accept")?.includes("text/html") ?? false;
@@ -43,6 +44,15 @@ export function createGateway(upstream: string): Hono {
     if (state.status === "error") return unavailable(context.req.raw);
     if (state.status === "ok") return context.redirect("/");
     return context.html(await readFile(loginPath, "utf8"));
+  });
+
+  app.get("/consent", async (context) => {
+    const state = await sessionState(context.req.raw.headers);
+    if (state.status === "error") return unavailable(context.req.raw);
+    if (state.status === "unauthenticated") {
+      return context.redirect(`/login?${new URL(context.req.url).searchParams}`);
+    }
+    return context.html(await readFile(consentPath, "utf8"));
   });
 
   app.get("/healthz", async (context) => {
