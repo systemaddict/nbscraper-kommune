@@ -166,6 +166,8 @@ def process_email(conn, settings: Settings, message: ParsedEmail,
         existing_message = repo.get_email_message(conn, message.gmail_message_id)
         if existing_message and existing_message["status"] not in {"new", "error"}:
             return "duplicate"
+        repo.refresh_email_message(conn, message.as_row())
+        conn.commit()
 
     published_at = message.sent_at or message.received_at
     if below_floor(published_at, settings.min_published_floor):

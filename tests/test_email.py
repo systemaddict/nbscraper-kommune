@@ -119,6 +119,60 @@ def test_gmail_parser_decodes_rfc2047_sender_and_subject_headers():
     assert parsed.subject == "Pressemeddelelse fra Køge"
 
 
+def test_gmail_parser_uses_original_sender_for_mailing_lists():
+    data = {
+        "id": "gmail-list",
+        "internalDate": "1787126460000",
+        "payload": {
+            "mimeType": "text/plain",
+            "headers": [
+                {
+                    "name": "From",
+                    "value": (
+                        '"\'Lotte Holle Schneider\' via Pressemeddelelser fra kommuner" '
+                        "<pmkom@nb-medier.dk>"
+                    ),
+                },
+                {"name": "X-Original-From", "value": (
+                    "Lotte Holle Schneider <lotte.schneider@koege.dk>"
+                )},
+                {"name": "Reply-To", "value": (
+                    "Lotte Holle Schneider <lotte.schneider@koege.dk>"
+                )},
+                {"name": "List-ID", "value": "<pmkom.nb-medier.dk>"},
+            ],
+            "body": {"data": _b64("Indhold")},
+        },
+    }
+
+    parsed = parse_gmail_message(data)
+
+    assert parsed.sender_name == "Lotte Holle Schneider"
+    assert parsed.sender_email == "lotte.schneider@koege.dk"
+    assert parsed.raw["envelope_sender"] == "pmkom@nb-medier.dk"
+    assert parsed.raw["list_id"] == "<pmkom.nb-medier.dk>"
+
+
+def test_gmail_parser_does_not_replace_ordinary_sender_with_reply_to():
+    data = {
+        "id": "gmail-reply-to",
+        "internalDate": "1787126460000",
+        "payload": {
+            "mimeType": "text/plain",
+            "headers": [
+                {"name": "From", "value": "Nyhedsbrev <news@example.com>"},
+                {"name": "Reply-To", "value": "Support <support@example.com>"},
+            ],
+            "body": {"data": _b64("Indhold")},
+        },
+    }
+
+    parsed = parse_gmail_message(data)
+
+    assert parsed.sender_email == "news@example.com"
+    assert parsed.raw["envelope_sender"] is None
+
+
 def test_gmail_client_refreshes_token_and_paginates_scan_window():
     requests: list[httpx.Request] = []
 
@@ -212,6 +266,57 @@ def test_known_sender_is_cached_and_second_message_needs_no_ai():
     assert first == second == "ingested"
     assert repo.get_sender_resolution(conn, "margit.kjellquist@koege.dk")["mode"] == "fixed"
     assert repo.count_email_messages(conn, status="ingested") == 2
+
+
+def test_ignored_committee_message_does_not_poison_fixed_sender_mapping():
+    settings = _settings()
+    conn = db.connect(settings)
+    db.init_schema(conn, settings)
+    sender = "margit.kjellquist@koege.dk"
+
+    assert process_email(
+        conn, settings, _message("press-1", sender, "Pressemeddelelse: Første")
+    ) == "ingested"
+    assert process_email(
+        conn, settings, _message("committee", sender, "Nyt fra udvalg i Køge")
+    ) == "ignored"
+    assert process_email(
+        conn, settings, _message("press-2", sender, "Pressemeddelelse: Anden")
+    ) == "ingested"
+
+    resolution = repo.get_sender_resolution(conn, sender)
+    assert resolution["mode"] == "fixed"
+    assert resolution["municipality_key"] == "koege"
+
+
+def test_retry_refreshes_sender_metadata_before_reclassification():
+    settings = _settings()
+    conn = db.connect(settings)
+    db.init_schema(conn, settings)
+    stale = _message(
+        "retry", "pmkom@nb-medier.dk", "Pressemeddelelse: Budget",
+        sender_name="Lotte via Pressemeddelelser fra kommuner",
+    )
+    repo.insert_email_message(conn, stale.as_row())
+    repo.set_email_decision(
+        conn, stale.gmail_message_id, municipality_key=None,
+        classification="noise", confidence=0.9, source="sender",
+        reason="stale forwarding rule", sender_scope="fixed", status="error",
+    )
+    conn.commit()
+
+    refreshed = replace(
+        stale,
+        sender_name="Lotte Holle Schneider",
+        sender_email="lotte.schneider@koege.dk",
+        raw={"envelope_sender": "pmkom@nb-medier.dk"},
+    )
+    assert process_email(conn, settings, refreshed) == "ingested"
+
+    stored = repo.get_email_message(conn, stale.gmail_message_id)
+    assert stored["sender_name"] == "Lotte Holle Schneider"
+    assert stored["sender_email"] == "lotte.schneider@koege.dk"
+    assert stored["status"] == "ingested"
 
 
 def test_email_before_publication_floor_is_ignored_without_ai_or_sender_cache():

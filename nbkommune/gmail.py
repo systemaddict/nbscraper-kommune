@@ -72,6 +72,26 @@ def _decode_header(value: str) -> str:
         return value
 
 
+def _sender(headers: dict[str, str]) -> tuple[str, str, str | None]:
+    """Resolve the author, preserving a mailing-list envelope for audit.
+
+    Google Groups rewrites ``From`` to the list address while retaining the
+    author in ``X-Original-From`` and ``Reply-To``. Only trust those alternate
+    headers when the message identifies itself as a list; ordinary email is
+    allowed to have an unrelated reply address.
+    """
+    from_name, from_email = parseaddr(_decode_header(headers.get("from", "")))
+    from_email = from_email.casefold().strip()
+    is_list = bool(headers.get("list-id") or re.search(r"\bvia\b", from_name, re.I))
+    if is_list:
+        for header in ("x-original-from", "x-google-original-from", "reply-to"):
+            name, email = parseaddr(_decode_header(headers.get(header, "")))
+            email = email.casefold().strip()
+            if email and email != from_email:
+                return name or from_name, email, from_email or None
+    return from_name, from_email, None
+
+
 def _parts(payload: dict) -> tuple[list[str], list[str]]:
     plain: list[str] = []
     html: list[str] = []
@@ -107,8 +127,7 @@ def parse_gmail_message(data: dict) -> ParsedEmail:
     payload = data.get("payload") or {}
     headers = {str(h.get("name", "")).casefold(): str(h.get("value", ""))
                for h in payload.get("headers", [])}
-    sender_name, sender_email = parseaddr(_decode_header(headers.get("from", "")))
-    sender_email = sender_email.casefold().strip()
+    sender_name, sender_email, envelope_sender = _sender(headers)
     if not sender_email:
         raise ValueError(f"Gmail message {data.get('id')!r} has no sender address")
 
@@ -161,6 +180,8 @@ def parse_gmail_message(data: dict) -> ParsedEmail:
             "label_ids": data.get("labelIds") or [],
             "size_estimate": data.get("sizeEstimate"),
             "rfc_message_id": headers.get("message-id"),
+            "list_id": headers.get("list-id"),
+            "envelope_sender": envelope_sender,
         },
     )
 

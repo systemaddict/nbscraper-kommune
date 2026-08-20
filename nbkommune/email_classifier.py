@@ -245,7 +245,8 @@ def remember_decision(conn, sender_email: str, decision: EmailDecision,
     """Cache only decisions whose scope is safe to reuse for later messages."""
     if decision.confidence < threshold:
         return
-    if decision.action == "ignore" and decision.sender_scope == "fixed":
+    if (decision.action == "ignore" and decision.sender_scope == "fixed"
+            and not decision.municipality_key):
         repo.upsert_sender_resolution(
             conn, sender_email=sender_email, mode="ignore", municipality_key=None,
             confidence=decision.confidence, reason=decision.reason, source=decision.source,

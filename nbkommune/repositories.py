@@ -376,6 +376,27 @@ def insert_email_message(conn: Connection, row: dict[str, Any]) -> bool:
     return bool(result.rowcount)
 
 
+def refresh_email_message(conn: Connection, row: dict[str, Any]) -> None:
+    """Refresh parsed Gmail metadata before retrying a failed decision."""
+    conn.execute(
+        """
+        UPDATE email_message SET
+            gmail_thread_id = %(thread_id)s,
+            sender_name = %(sender_name)s,
+            sender_email = %(sender_email)s,
+            subject = %(subject)s,
+            sent_at = %(sent_at)s,
+            received_at = %(received_at)s,
+            body_text = %(body_text)s,
+            body_html = %(body_html)s,
+            links_json = %(links_json)s,
+            raw_json = %(raw_json)s
+        WHERE gmail_message_id = %(id)s
+        """,
+        row,
+    )
+
+
 def get_email_message(conn: Connection, gmail_message_id: str) -> dict | None:
     return conn.execute(
         "SELECT * FROM email_message WHERE gmail_message_id = %s",
