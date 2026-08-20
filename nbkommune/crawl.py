@@ -161,6 +161,17 @@ def discover_target(conn, target: Target, http: HttpClient,
         existing = repo.get_article(conn, target.key, listed.id)
         decision = _decide(existing, listed)
         repo.upsert_listed_article(conn, row)
+        repo.upsert_article_source(
+            conn,
+            municipality_key=target.key,
+            article_id=listed.id,
+            source_type="website",
+            external_id=row["canonical_url"],
+            source_url=listed.url,
+            title=listed.title,
+            received_at=repo.now_iso(),
+            metadata={"channel": listed.channel, "listing": listed.raw},
+        )
         if decision == "new":
             stats.new += 1
             fresh.append((listed.id, "new"))
@@ -293,6 +304,19 @@ def ingest_article(conn, target: Target, http: HttpClient, article_id: str,
         clear_published_at=_legacy_published_is_untrusted(article),
     )
     repo.set_article_kind(conn, target.key, article_id, kind)
+    repo.upsert_article_source(
+        conn,
+        municipality_key=target.key,
+        article_id=article_id,
+        source_type="website",
+        external_id=article["canonical_url"] or article["url"],
+        source_url=final_url,
+        title=detail.title,
+        body_text=detail.body_text,
+        body_html=detail.body_html,
+        received_at=repo.now_iso(),
+        metadata={"provenance": detail.provenance},
+    )
     conn.commit()
 
     if changed:

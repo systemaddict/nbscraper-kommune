@@ -73,6 +73,8 @@ export function createGateway(upstream: string): Hono {
     const destination = new URL(`${target.pathname}${target.search}`, upstream);
     const headers = new Headers(incoming.headers);
     headers.delete("host");
+    headers.delete("x-nbk-user-email");
+    headers.set("x-nbk-user-email", state.session.user.email);
     const requestInit: RequestInit & { duplex: "half" } = {
       method: incoming.method,
       headers,

@@ -1,7 +1,8 @@
 # nbscraper-kommune
 
 Scraper for **nyheder og pressemeddelelser** from all 98 Danish kommuner.
-Discover article URLs, extract the article, store it in Bunny Database.
+Discover article URLs and municipality inbox messages, extract the content,
+and store it in Bunny Database.
 
 Independent of the byrådsmøde scraper: its own repo, its own Bunny Database, its
 own `NBK_` config namespace, no shared code.
@@ -86,6 +87,9 @@ nbkommune/
     listing.py     HTML listing: configured selectors or heuristic
     __init__.py    make_source / resolve_source
   crawl.py         discover_target + ingest_article
+  gmail.py         Gmail REST client and safe MIME parsing
+  email_classifier.py  cached sender routing + constrained OpenRouter fallback
+  email_ingest.py  inbox collection and article/source promotion
   worker.py        The task loop: fast and paced lanes, leases, janitor
   repositories.py  All SQLite-compatible SQL. Nothing else touches the DB.
   db.py            Bunny libSQL/HTTP adapter + schema (idempotent)
@@ -118,6 +122,8 @@ nbk resolve aarhus odder           # what channel does a site resolve to? (no wr
 nbk crawl --now                    # discovery inline
 nbk crawl                          # or: queue discovery for the worker
 nbk worker                         # the service: pops and executes tasks
+nbk gmail                          # queue the singleton inbox collector
+nbk gmail --now                    # poll Gmail inline for diagnostics
 nbk worker --once --max-tasks 20   # drain what is due, then exit
 nbk serve                          # authenticated status API + dashboard on :8000
 nbk stats                          # per-kommune corpus + extraction health
@@ -138,8 +144,8 @@ Production uses the same image for two Magic Containers: a private worker that
 starts with `nbk worker`, and a small public web container that starts with
 `nbk serve --port 8000`. The worker keeps exactly one replica. That is deliberate
 because the queue and per-host pacing gate are global and Bunny Database uses
-SQLite's single-writer model. The web process is read-only and opens a short
-database connection for each status poll.
+SQLite's single-writer model. The web process opens a short database connection
+for each request; only authenticated inbox-review actions write through it.
 
 Bunny Database provides these variables to the container:
 
@@ -159,6 +165,46 @@ Use the dashboard search box or `GET /api/articles?q=cykelsti`; search can be
 combined with the municipality, type and status filters. Results are ranked by
 relevance, with title matches weighted highest. The index is backfilled once on
 upgrade and then maintained by database triggers.
+
+### Gmail inbox ingestion
+
+Gmail is opt-in. The worker polls a dedicated label, parses MIME content, and
+stores each Gmail message id exactly once. Municipality assignment uses this
+order:
+
+1. a remembered exact sender decision;
+2. an unambiguous municipality domain from `registry.json`;
+3. an exact display name such as `Egedal Kommune`;
+4. a schema-constrained OpenRouter classification over the cleaned message and
+   the canonical 98-municipality list.
+
+High-confidence fixed senders are remembered, so OpenRouter is called once.
+Shared services such as FirstAgenda are stored as `classify_each` and resolved
+from each message's subject/body instead. Low-confidence results enter the
+authenticated dashboard review queue rather than being guessed.
+
+Create a Gmail OAuth client and refresh token with read-only Gmail access, then
+set these worker secrets:
+
+```text
+NBK_GMAIL_ENABLED=true
+NBK_GMAIL_CLIENT_ID=...
+NBK_GMAIL_CLIENT_SECRET=...
+NBK_GMAIL_REFRESH_TOKEN=...
+NBK_GMAIL_QUERY=label:kommune-news
+NBK_OPENROUTER_API_KEY=...
+```
+
+The OpenRouter key can use the same secret value as the sibling nbscraper
+deployment, but it is configured independently as `NBK_OPENROUTER_API_KEY` and
+is never stored in the repository or database. Only sender, subject, cleaned
+body text, and extracted links are sent for unknown/shared senders. Quoted
+threads, MIME attachments, and raw message data are excluded.
+
+`article_source` records website and email renditions separately. A matching
+email therefore adds provenance and supplemental text without overwriting the
+canonical website body. Existing website articles are backfilled into this
+table when the schema upgrade first runs.
 
 Set these variables on the dashboard container (not the worker):
 

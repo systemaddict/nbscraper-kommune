@@ -29,6 +29,7 @@ PRIORITY_MANUAL = 100      # an operator asked for it
 PRIORITY_NEW = 80          # a newly discovered article
 PRIORITY_CHANGED = 70      # a known article whose listing changed
 PRIORITY_DISCOVER = 60     # a target's scheduled discovery pass
+PRIORITY_EMAIL = 60        # poll the shared municipal inbox
 FAST_LANE_MIN = 50         # ── everything at or above here is the fast lane ──
 PRIORITY_RECHECK = 30      # verify an ingested article for late edits
 PRIORITY_BACKFILL = 10     # deliberate archive crawl
@@ -297,6 +298,173 @@ def touch_article_checked(conn: Connection, municipality_key: str,
     )
 
 
+def upsert_article_source(conn: Connection, *, municipality_key: str,
+                          article_id: str, source_type: str, external_id: str,
+                          source_url: str | None = None,
+                          title: str | None = None,
+                          body_text: str | None = None,
+                          body_html: str | None = None,
+                          received_at: str | None = None,
+                          metadata: dict[str, Any] | None = None) -> None:
+    """Attach one concrete website/email occurrence to an article.
+
+    The article row is the canonical, consumer-facing record. Sources retain
+    each rendition independently, so a richer email does not overwrite a web
+    page and an unchanged web recheck does not erase email provenance.
+    Caller commits.
+    """
+    now = now_iso()
+    conn.execute(
+        """
+        INSERT INTO article_source (
+            municipality_key, article_id, source_type, external_id, source_url,
+            title, body_text, body_html, received_at, metadata_json,
+            first_seen_at, last_seen_at)
+        VALUES (%(mk)s, %(aid)s, %(stype)s, %(external)s, %(url)s, %(title)s,
+                %(text)s, %(html)s, %(received)s, %(metadata)s, %(now)s, %(now)s)
+        ON CONFLICT (source_type, external_id) DO UPDATE SET
+            municipality_key = excluded.municipality_key,
+            article_id = excluded.article_id,
+            source_url = COALESCE(excluded.source_url, article_source.source_url),
+            title = COALESCE(excluded.title, article_source.title),
+            body_text = COALESCE(excluded.body_text, article_source.body_text),
+            body_html = COALESCE(excluded.body_html, article_source.body_html),
+            received_at = COALESCE(excluded.received_at, article_source.received_at),
+            metadata_json = COALESCE(excluded.metadata_json, article_source.metadata_json),
+            last_seen_at = excluded.last_seen_at
+        """,
+        {"mk": municipality_key, "aid": article_id, "stype": source_type,
+         "external": external_id, "url": source_url, "title": title,
+         "text": body_text, "html": body_html, "received": received_at,
+         "metadata": json.dumps(metadata, ensure_ascii=False) if metadata else None,
+         "now": now},
+    )
+
+
+def article_sources(conn: Connection, municipality_key: str,
+                    article_id: str) -> list[dict]:
+    return conn.execute(
+        "SELECT * FROM article_source WHERE municipality_key = %s AND article_id = %s "
+        "ORDER BY first_seen_at",
+        (municipality_key, article_id),
+    ).fetchall()
+
+
+# ── email inbox ───────────────────────────────────────────────────────────────────
+def email_message_exists(conn: Connection, gmail_message_id: str) -> bool:
+    return conn.execute(
+        "SELECT 1 AS found FROM email_message WHERE gmail_message_id = %s",
+        (gmail_message_id,),
+    ).fetchone() is not None
+
+
+def insert_email_message(conn: Connection, row: dict[str, Any]) -> bool:
+    """Persist a parsed Gmail message exactly once. Caller commits."""
+    result = conn.execute(
+        """
+        INSERT INTO email_message (
+            gmail_message_id, gmail_thread_id, sender_name, sender_email,
+            subject, sent_at, received_at, body_text, body_html, links_json,
+            status, raw_json, created_at)
+        VALUES (%(id)s, %(thread_id)s, %(sender_name)s, %(sender_email)s,
+                %(subject)s, %(sent_at)s, %(received_at)s, %(body_text)s,
+                %(body_html)s, %(links_json)s, 'new', %(raw_json)s, %(now)s)
+        ON CONFLICT (gmail_message_id) DO NOTHING
+        """,
+        {**row, "now": now_iso()},
+    )
+    return bool(result.rowcount)
+
+
+def get_email_message(conn: Connection, gmail_message_id: str) -> dict | None:
+    return conn.execute(
+        "SELECT * FROM email_message WHERE gmail_message_id = %s",
+        (gmail_message_id,),
+    ).fetchone()
+
+
+def set_email_decision(conn: Connection, gmail_message_id: str, *,
+                       municipality_key: str | None, classification: str,
+                       confidence: float, source: str, reason: str,
+                       sender_scope: str, status: str,
+                       article_id: str | None = None) -> None:
+    """Store the routing decision and processing outcome. Caller commits."""
+    conn.execute(
+        """
+        UPDATE email_message SET
+            municipality_key = %(mk)s,
+            classification = %(classification)s,
+            confidence = %(confidence)s,
+            classification_source = %(source)s,
+            assignment_reason = %(reason)s,
+            sender_scope = %(scope)s,
+            status = %(status)s,
+            article_id = %(article_id)s,
+            processed_at = %(now)s
+        WHERE gmail_message_id = %(id)s
+        """,
+        {"id": gmail_message_id, "mk": municipality_key,
+         "classification": classification, "confidence": confidence,
+         "source": source, "reason": reason, "scope": sender_scope,
+         "status": status, "article_id": article_id, "now": now_iso()},
+    )
+
+
+def get_sender_resolution(conn: Connection, sender_email: str) -> dict | None:
+    return conn.execute(
+        "SELECT * FROM email_sender_resolution WHERE sender_email = %s",
+        (sender_email.casefold().strip(),),
+    ).fetchone()
+
+
+def upsert_sender_resolution(conn: Connection, *, sender_email: str, mode: str,
+                             municipality_key: str | None, confidence: float,
+                             reason: str, source: str) -> None:
+    now = now_iso()
+    conn.execute(
+        """
+        INSERT INTO email_sender_resolution (
+            sender_email, mode, municipality_key, confidence, reason,
+            resolution_source, first_seen_at, last_seen_at)
+        VALUES (%(email)s, %(mode)s, %(mk)s, %(confidence)s, %(reason)s,
+                %(source)s, %(now)s, %(now)s)
+        ON CONFLICT (sender_email) DO UPDATE SET
+            mode = excluded.mode,
+            municipality_key = excluded.municipality_key,
+            confidence = excluded.confidence,
+            reason = excluded.reason,
+            resolution_source = excluded.resolution_source,
+            last_seen_at = excluded.last_seen_at
+        """,
+        {"email": sender_email.casefold().strip(), "mode": mode,
+         "mk": municipality_key, "confidence": confidence, "reason": reason,
+         "source": source, "now": now},
+    )
+
+
+def list_email_messages(conn: Connection, *, status: str | None = None,
+                        limit: int = 100, offset: int = 0) -> list[dict]:
+    where = "WHERE e.status = %(status)s" if status else ""
+    return conn.execute(
+        f"""SELECT e.*, m.name AS municipality_name
+            FROM email_message e
+            LEFT JOIN municipality m ON m.key = e.municipality_key
+            {where}
+            ORDER BY e.received_at DESC, e.created_at DESC
+            LIMIT %(limit)s OFFSET %(offset)s""",
+        {"status": status, "limit": limit, "offset": offset},
+    ).fetchall()
+
+
+def count_email_messages(conn: Connection, *, status: str | None = None) -> int:
+    where = "WHERE status = %s" if status else ""
+    row = conn.execute(
+        f"SELECT COUNT(*) AS n FROM email_message {where}",
+        (status,) if status else None,
+    ).fetchone()
+    return int(row["n"] if row else 0)
+
+
 _SEARCH_TERM = re.compile(r"[^\W_]+", re.UNICODE)
 
 
@@ -315,6 +483,7 @@ def _fts_query(value: str) -> str:
 def list_articles(conn: Connection, *, municipality_key: str | None = None,
                   status: str | None = None, kind: str | None = None,
                   thin: bool | None = None, search: str | None = None,
+                  source_type: str | None = None,
                   limit: int = 100,
                   offset: int = 0) -> list[dict]:
     where, params = [], {}
@@ -330,6 +499,17 @@ def list_articles(conn: Connection, *, municipality_key: str | None = None,
     if thin is not None:
         where.append("a.thin = %(thin)s")
         params["thin"] = thin
+    if source_type:
+        where.append(
+            "(EXISTS (SELECT 1 FROM article_source sf WHERE "
+            "sf.municipality_key = a.municipality_key AND sf.article_id = a.id "
+            "AND sf.source_type = %(source_type)s) OR "
+            "(NOT EXISTS (SELECT 1 FROM article_source sx WHERE "
+            "sx.municipality_key = a.municipality_key AND sx.article_id = a.id) "
+            "AND CASE WHEN a.channel = 'email' THEN 'email' ELSE 'website' END "
+            "= %(source_type)s))"
+        )
+        params["source_type"] = source_type
     fts = _fts_query(search or "")
     if fts:
         where.append("article_fts MATCH %(search)s")
@@ -347,7 +527,14 @@ def list_articles(conn: Connection, *, municipality_key: str | None = None,
     return conn.execute(
         f"""SELECT a.municipality_key, m.name AS municipality_name, a.id, a.url,
                    a.title, a.kind, a.status, a.published_at, a.word_count,
-                   a.thin, a.ingested_at{excerpt}
+                   a.thin, a.ingested_at,
+                   COALESCE((
+                       SELECT GROUP_CONCAT(DISTINCT source_type)
+                       FROM article_source src
+                       WHERE src.municipality_key = a.municipality_key
+                         AND src.article_id = a.id
+                   ), CASE WHEN a.channel = 'email' THEN 'email' ELSE 'website' END)
+                   AS sources{excerpt}
             FROM article a JOIN municipality m ON m.key = a.municipality_key
             {fts_join}
             {clause}
@@ -359,7 +546,8 @@ def list_articles(conn: Connection, *, municipality_key: str | None = None,
 
 def count_articles(conn: Connection, *, municipality_key: str | None = None,
                    status: str | None = None, kind: str | None = None,
-                   search: str | None = None) -> int:
+                   search: str | None = None,
+                   source_type: str | None = None) -> int:
     """Count articles using the public dashboard's list filters."""
     where, params = [], {}
     if municipality_key:
@@ -371,6 +559,17 @@ def count_articles(conn: Connection, *, municipality_key: str | None = None,
     if kind:
         where.append("a.kind = %(kind)s")
         params["kind"] = kind
+    if source_type:
+        where.append(
+            "(EXISTS (SELECT 1 FROM article_source sf WHERE "
+            "sf.municipality_key = a.municipality_key AND sf.article_id = a.id "
+            "AND sf.source_type = %(source_type)s) OR "
+            "(NOT EXISTS (SELECT 1 FROM article_source sx WHERE "
+            "sx.municipality_key = a.municipality_key AND sx.article_id = a.id) "
+            "AND CASE WHEN a.channel = 'email' THEN 'email' ELSE 'website' END "
+            "= %(source_type)s))"
+        )
+        params["source_type"] = source_type
     fts = _fts_query(search or "")
     if fts:
         where.append("article_fts MATCH %(search)s")
@@ -509,6 +708,21 @@ def ensure_discover_tasks(conn: Connection, target_keys: list[str], *,
                      priority=PRIORITY_DISCOVER, run_after=_ahead(i * gap_s),
                      max_attempts=0)
     return len(pending)
+
+
+def ensure_email_task(conn: Connection) -> bool:
+    """Seed the singleton Gmail collector task when no live one exists."""
+    existing = conn.execute(
+        "SELECT id FROM scrape_task WHERE kind = 'collect_email' "
+        "AND status IN ('queued', 'running') LIMIT 1"
+    ).fetchone()
+    if existing:
+        return False
+    enqueue_task(
+        conn, kind="collect_email", municipality_key="_gmail",
+        reason="schedule", priority=PRIORITY_EMAIL, max_attempts=0,
+    )
+    return True
 
 
 def pop_due_task(conn: Connection, *, lane: str = "any",

@@ -16,6 +16,7 @@ from rich.table import Table
 from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.crawl import discover_target, ingest_article
+from nbkommune.email_ingest import collect_gmail
 from nbkommune.http import HttpClient
 from nbkommune.settings import get_settings
 from nbkommune.sources import make_source
@@ -214,6 +215,37 @@ def worker(
     console.print(f"[green]executed {executed} task(s)[/green]")
 
 
+@app.command("gmail")
+def gmail(
+    now: bool = typer.Option(False, "--now", help="Poll and process Gmail inline."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Queue the Gmail collector, or run one poll inline for diagnostics."""
+    _setup_logging(verbose)
+    settings = get_settings()
+    settings.validate_gmail()
+    if not settings.gmail_enabled:
+        raise typer.BadParameter("set NBK_GMAIL_ENABLED=true first")
+    conn = db.connect(settings)
+    db.init_schema(conn, settings)
+    if not now:
+        queued = repo.ensure_email_task(conn)
+        conn.commit()
+        console.print("[green]queued Gmail collector[/green]" if queued
+                      else "[yellow]Gmail collector is already queued/running[/yellow]")
+        conn.close()
+        return
+    try:
+        result = collect_gmail(conn, settings)
+        console.print(
+            f"[green]Gmail processed[/green]: seen={result.seen} "
+            f"ingested={result.ingested} ignored={result.ignored} "
+            f"review={result.review} duplicates={result.duplicates}"
+        )
+    finally:
+        conn.close()
+
+
 @app.command("serve")
 def serve(
     host: str = typer.Option("0.0.0.0", help="Interface to bind."),
@@ -280,7 +312,9 @@ def stats(
 @app.command("queue")
 def queue(
     status: Optional[str] = typer.Option(None, help="queued | running | done | dead | cancelled"),
-    kind: Optional[str] = typer.Option(None, help="discover | ingest | recheck"),
+    kind: Optional[str] = typer.Option(
+        None, help="discover | collect_email | ingest | recheck"
+    ),
     limit: int = typer.Option(30),
 ) -> None:
     """Show the task queue."""

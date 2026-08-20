@@ -79,6 +79,13 @@
     .pager-actions { display: flex; gap: .4rem; }
     .pager button { cursor: pointer; }
     .pager button:disabled { opacity: .4; cursor: default; }
+    .email-review { margin-top: 1rem; }
+    .email-subject { white-space: normal; min-width: 18rem; line-height: 1.35; }
+    .email-reason { max-width: 30rem; white-space: normal; line-height: 1.35; }
+    .email-actions { display: flex; align-items: center; gap: .4rem; }
+    .email-actions button { min-height: 2rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--foreground); cursor: pointer; }
+    .email-actions button.danger { color: var(--danger); }
+    .remember { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted-fg); font-size: .72rem; }
     @media (max-width: 1000px) { .stats { grid-template-columns: repeat(2, 1fr); } .columns { grid-template-columns: 1fr; } }
     @media (max-width: 640px) { .shell { padding: 1rem; } header { flex-direction: column; } .stats { grid-template-columns: 1fr 1fr; } .stat-value { font-size: 1.45rem; } }
     @media (prefers-color-scheme: dark) {
@@ -154,19 +161,35 @@
             <option value="listed">Afventer</option>
             <option value="gone">Fjernet</option>
           </select>
+          <select id="article-source" aria-label="Kilde">
+            <option value="">Alle kilder</option>
+            <option value="website">Website</option>
+            <option value="email">E-mail</option>
+          </select>
           <select id="article-municipality" aria-label="Kommune">
             <option value="">Alle kommuner</option>
           </select>
         </div>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Titel</th><th>Kommune</th><th>Type</th><th>Status</th><th>Publiceret</th><th>Indlæst</th><th class="num">Ord</th></tr></thead>
-        <tbody id="article-rows"><tr><td colspan="7" class="empty">Henter artikler…</td></tr></tbody>
+        <thead><tr><th>Titel</th><th>Kommune</th><th>Kilde</th><th>Type</th><th>Status</th><th>Publiceret</th><th>Indlæst</th><th class="num">Ord</th></tr></thead>
+        <tbody id="article-rows"><tr><td colspan="8" class="empty">Henter artikler…</td></tr></tbody>
       </table></div>
       <div class="pager">
         <span class="muted small" id="article-page">—</span>
         <div class="pager-actions"><button id="article-prev" type="button">Forrige</button><button id="article-next" type="button">Næste</button></div>
       </div>
+    </section>
+
+    <section class="card email-review">
+      <div class="card-head">
+        <div><h2>E-mails til kontrol</h2><p class="muted small" id="email-count">Henter tvivlstilfælde…</p></div>
+        <span class="badge" id="email-badge">0</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Afsender</th><th>Emne</th><th>AI-vurdering</th><th>Handling</th></tr></thead>
+        <tbody id="email-rows"><tr><td colspan="4" class="empty">Henter e-mails…</td></tr></tbody>
+      </table></div>
     </section>
   </main>
 
@@ -272,13 +295,14 @@
         const status = row.status === "ingested" ? "Indlæst" : row.status === "listed" ? "Afventer" : row.status === "gone" ? "Fjernet" : row.status;
         const statusClass = row.status === "ingested" ? "ok" : row.status === "gone" ? "bad" : "";
         const excerpt = row.excerpt ? `<div class="muted small article-excerpt">${esc(row.excerpt)}</div>` : "";
-        return `<tr><td class="article-title"><strong>${titleCell}</strong>${excerpt}<div class="muted small">${esc(row.id)}</div></td><td>${esc(row.municipality_name)}</td><td><span class="badge ${row.kind === "pressemeddelelse" ? "press" : ""}">${esc(kind)}</span></td><td><span class="badge ${statusClass}">${esc(status)}</span></td><td>${date(row.published_at)}</td><td>${row.ingested_at ? relative(row.ingested_at) : "—"}</td><td class="num">${row.word_count == null ? "—" : nf.format(row.word_count)}</td></tr>`;
-      }).join("") || `<tr><td colspan="7" class="empty">Ingen artikler matcher filtrene</td></tr>`;
+        const sources = String(row.sources || "ukendt").split(",").map((value) => `<span class="badge">${esc(value === "website" ? "Website" : value === "email" ? "E-mail" : value)}</span>`).join(" ");
+        return `<tr><td class="article-title"><strong>${titleCell}</strong>${excerpt}<div class="muted small">${esc(row.id)}</div></td><td>${esc(row.municipality_name)}</td><td>${sources}</td><td><span class="badge ${row.kind === "pressemeddelelse" ? "press" : ""}">${esc(kind)}</span></td><td><span class="badge ${statusClass}">${esc(status)}</span></td><td>${date(row.published_at)}</td><td>${row.ingested_at ? relative(row.ingested_at) : "—"}</td><td class="num">${row.word_count == null ? "—" : nf.format(row.word_count)}</td></tr>`;
+      }).join("") || `<tr><td colspan="8" class="empty">Ingen artikler matcher filtrene</td></tr>`;
     }
 
     async function refreshArticles() {
       const params = new URLSearchParams({limit: articleLimit, offset: articleOffset});
-      const filters = {q: $("article-search").value.trim(), kind: $("article-kind").value, status: $("article-status").value, municipality: $("article-municipality").value};
+      const filters = {q: $("article-search").value.trim(), kind: $("article-kind").value, status: $("article-status").value, source: $("article-source").value, municipality: $("article-municipality").value};
       Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
       try {
         const response = await fetch(`/api/articles?${params}`, {cache: "no-store"});
@@ -286,8 +310,42 @@
         renderArticles(await response.json());
       } catch (error) {
         $("article-count").textContent = `Kunne ikke hente artikler: ${error.message}`;
-        $("article-rows").innerHTML = `<tr><td colspan="7" class="empty">Artikelvisningen kunne ikke indlæses</td></tr>`;
+        $("article-rows").innerHTML = `<tr><td colspan="8" class="empty">Artikelvisningen kunne ikke indlæses</td></tr>`;
       }
+    }
+
+    async function refreshEmails() {
+      try {
+        const response = await fetch("/api/admin/emails?status=review&limit=50", {cache: "no-store"});
+        if (!response.ok) throw new Error(`API-fejl ${response.status}`);
+        const data = await response.json();
+        $("email-count").textContent = `${nf.format(data.total)} e-mails kræver kontrol`;
+        $("email-badge").textContent = nf.format(data.total);
+        $("email-badge").className = `badge ${data.total ? "bad" : "ok"}`;
+        const options = data.municipalities.map((item) => `<option value="${esc(item.key)}">${esc(item.name)}</option>`).join("");
+        $("email-rows").innerHTML = data.items.map((row) => {
+          const confidence = row.confidence == null ? "—" : `${Math.round(Number(row.confidence) * 100)}%`;
+          const excerpt = String(row.body_text || "").slice(0, 220);
+          return `<tr data-email-id="${esc(row.gmail_message_id)}"><td><strong>${esc(row.sender_name || row.sender_email)}</strong><div class="muted small">${esc(row.sender_email)}</div></td><td class="email-subject"><strong>${esc(row.subject || "Uden emne")}</strong><div class="muted small">${date(row.received_at)}</div><div class="muted small email-reason">${esc(excerpt)}</div></td><td class="email-reason"><span class="badge">${esc(row.classification || "ukendt")}</span> ${confidence}<div class="muted small">${esc(row.assignment_reason || "Ingen begrundelse")}</div></td><td><div class="email-actions"><select class="email-municipality"><option value="">Vælg kommune…</option>${options}</select><button type="button" data-action="assign">Tildel</button><button type="button" class="danger" data-action="ignore">Ignorér</button></div><label class="remember"><input class="remember-sender" type="checkbox"> Husk afsenderen</label></td></tr>`;
+        }).join("") || `<tr><td colspan="4" class="empty">Ingen e-mails kræver kontrol</td></tr>`;
+      } catch (error) {
+        $("email-count").textContent = `Kunne ikke hente e-mails: ${error.message}`;
+        $("email-rows").innerHTML = `<tr><td colspan="4" class="empty">Kontrolkøen kunne ikke indlæses</td></tr>`;
+      }
+    }
+
+    async function emailAction(row, action) {
+      const id = row.dataset.emailId;
+      const municipality = row.querySelector(".email-municipality").value;
+      if (action === "assign" && !municipality) throw new Error("Vælg en kommune først");
+      const body = {municipality_key: municipality || null, remember_sender: row.querySelector(".remember-sender").checked};
+      const response = await fetch(`/api/admin/emails/${encodeURIComponent(id)}/${action}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-NBK-Admin-Action": "1"},
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`API-fejl ${response.status}`);
+      await Promise.all([refreshEmails(), refreshArticles()]);
     }
 
     async function refresh() {
@@ -297,6 +355,7 @@
         if (!response.ok) throw new Error(`API-fejl ${response.status}`);
         render(await response.json());
         refreshArticles();
+        refreshEmails();
         clearTimeout(timer);
         timer = setTimeout(refresh, 10_000);
       } catch (error) {
@@ -306,7 +365,16 @@
         timer = setTimeout(refresh, 15_000);
       }
     }
-    ["article-kind", "article-status", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
+    ["article-kind", "article-status", "article-source", "article-municipality"].forEach((id) => $(id).addEventListener("change", () => { articleOffset = 0; refreshArticles(); }));
+    $("email-rows").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      button.disabled = true;
+      emailAction(button.closest("tr"), button.dataset.action).catch((error) => {
+        button.disabled = false;
+        $("email-count").textContent = `Handlingen fejlede: ${error.message}`;
+      });
+    });
     let searchTimer;
     $("article-search").addEventListener("input", () => {
       clearTimeout(searchTimer);

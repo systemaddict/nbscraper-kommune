@@ -16,7 +16,7 @@ import logging
 import re
 import sqlite3
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Protocol, Self
 from urllib.parse import urljoin
@@ -343,6 +343,68 @@ def _table_statements() -> list[str]:
         "CREATE INDEX IF NOT EXISTS ix_article_canonical "
         "ON article(municipality_key, canonical_url)",
         """
+        CREATE TABLE IF NOT EXISTS article_source (
+            municipality_key TEXT NOT NULL,
+            article_id       TEXT NOT NULL,
+            source_type      TEXT NOT NULL,
+            external_id      TEXT NOT NULL,
+            source_url       TEXT,
+            title            TEXT,
+            body_text        TEXT,
+            body_html        TEXT,
+            received_at      TEXT,
+            metadata_json    TEXT,
+            first_seen_at    TEXT NOT NULL,
+            last_seen_at     TEXT NOT NULL,
+            PRIMARY KEY (source_type, external_id),
+            FOREIGN KEY (municipality_key, article_id)
+                REFERENCES article(municipality_key, id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_article_source_article "
+        "ON article_source(municipality_key, article_id)",
+        """
+        CREATE TABLE IF NOT EXISTS email_sender_resolution (
+            sender_email     TEXT PRIMARY KEY,
+            mode             TEXT NOT NULL,
+            municipality_key TEXT REFERENCES municipality(key),
+            confidence       REAL,
+            reason           TEXT,
+            resolution_source TEXT NOT NULL,
+            first_seen_at    TEXT NOT NULL,
+            last_seen_at     TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS email_message (
+            gmail_message_id TEXT PRIMARY KEY,
+            gmail_thread_id  TEXT,
+            sender_name      TEXT,
+            sender_email     TEXT NOT NULL,
+            subject          TEXT,
+            sent_at          TEXT,
+            received_at      TEXT,
+            body_text        TEXT,
+            body_html        TEXT,
+            links_json       TEXT,
+            municipality_key TEXT REFERENCES municipality(key),
+            classification   TEXT,
+            confidence       REAL,
+            classification_source TEXT,
+            assignment_reason TEXT,
+            sender_scope     TEXT,
+            status           TEXT NOT NULL DEFAULT 'new',
+            article_id       TEXT,
+            raw_json         TEXT,
+            created_at       TEXT NOT NULL,
+            processed_at     TEXT
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_email_message_status "
+        "ON email_message(status, received_at DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_email_message_sender "
+        "ON email_message(sender_email, received_at DESC)",
+        """
         CREATE VIRTUAL TABLE IF NOT EXISTS article_fts USING fts5(
             title,
             summary,
@@ -464,6 +526,29 @@ def init_schema(conn: Connection, settings: Settings | None = None) -> None:
         conn.execute(
             "INSERT INTO meta (key, value) VALUES (%s, %s)",
             ("schema:article_fts:v1", "complete"),
+        )
+        conn.commit()
+    source_marker = conn.execute(
+        "SELECT value FROM meta WHERE key = %s", ("schema:article_source:v1",)
+    ).fetchone()
+    if source_marker is None:
+        now = datetime.now(UTC).isoformat(timespec="seconds")
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO article_source (
+                municipality_key, article_id, source_type, external_id,
+                source_url, title, body_text, body_html, received_at,
+                metadata_json, first_seen_at, last_seen_at)
+            SELECT municipality_key, id, 'website', COALESCE(canonical_url, url),
+                   url, title, body_text, body_html, ingested_at,
+                   NULL, COALESCE(first_seen_at, ?), COALESCE(checked_at, ?)
+            FROM article
+            """,
+            (now, now),
+        )
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (%s, %s)",
+            ("schema:article_source:v1", "complete"),
         )
         conn.commit()
     logger.info("Bunny/SQLite schema ready")

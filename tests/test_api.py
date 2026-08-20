@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.api import create_app
+from nbkommune.gmail import ParsedEmail
 from nbkommune.settings import Settings
 
 
@@ -133,6 +134,7 @@ def test_articles_api_is_public_filterable_and_paginated(tmp_path):
         "word_count": None,
         "thin": 0,
         "ingested_at": None,
+        "sources": "website",
     }
 
     assert client.get("/api/articles", params={"kind": "invalid"}).status_code == 422
@@ -161,3 +163,53 @@ def test_articles_api_search_treats_fts_syntax_as_plain_text(tmp_path):
 
     assert response.status_code == 200
     assert response.json()["total"] == 0
+
+
+def test_article_source_filter_and_admin_email_assignment(tmp_path):
+    settings = _settings(tmp_path)
+    _seed(settings)
+    conn = db.connect(settings)
+    message = ParsedEmail(
+        gmail_message_id="review-1",
+        gmail_thread_id="thread-1",
+        sender_name="Ukendt afsender",
+        sender_email="unknown@example.org",
+        subject="Pressemeddelelse: Test",
+        sent_at="2026-08-19T08:00:00+00:00",
+        received_at="2026-08-19T08:01:00+00:00",
+        body_text="En pressemeddelelse som skal tildeles.",
+        body_html="<p>En pressemeddelelse som skal tildeles.</p>",
+        links=[],
+        raw={},
+    )
+    repo.insert_email_message(conn, message.as_row())
+    repo.set_email_decision(
+        conn, "review-1", municipality_key=None,
+        classification="press_release", confidence=0.6, source="ai",
+        reason="insufficient evidence", sender_scope="unknown", status="review",
+    )
+    conn.commit()
+    conn.close()
+    client = TestClient(create_app(settings))
+
+    website = client.get("/api/articles", params={"source": "website"})
+    email = client.get("/api/articles", params={"source": "email"})
+    review = client.get("/api/admin/emails")
+
+    assert website.json()["total"] == 2
+    assert email.json()["total"] == 0
+    assert review.json()["items"][0]["gmail_message_id"] == "review-1"
+    assert client.post(
+        "/api/admin/emails/review-1/assign",
+        json={"municipality_key": "koege", "remember_sender": True},
+    ).status_code == 403
+
+    assigned = client.post(
+        "/api/admin/emails/review-1/assign",
+        headers={"X-NBK-Admin-Action": "1", "X-NBK-User-Email": "admin@example.test"},
+        json={"municipality_key": "koege", "remember_sender": True},
+    )
+
+    assert assigned.status_code == 200
+    assert assigned.json()["status"] == "ingested"
+    assert client.get("/api/articles", params={"source": "email"}).json()["total"] == 1

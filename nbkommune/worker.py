@@ -28,6 +28,7 @@ from datetime import UTC, datetime
 from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.crawl import discover_target, ingest_article
+from nbkommune.email_ingest import collect_gmail
 from nbkommune.http import HttpClient
 from nbkommune.settings import Settings, get_settings
 from nbkommune.targets import Target, registry, selected_targets
@@ -40,7 +41,10 @@ _PURGE_INTERVAL_S = 3600.0
 _IDLE_SLEEP_S = 2.0
 
 # scrape_error phase for a task that failed as a whole.
-_PHASE_BY_KIND = {"discover": "list", "ingest": "detail", "recheck": "detail"}
+_PHASE_BY_KIND = {
+    "discover": "list", "ingest": "detail", "recheck": "detail",
+    "collect_email": "email",
+}
 
 
 class WorkerContext:
@@ -87,10 +91,22 @@ def _exec_ingest(ctx: WorkerContext, task: dict) -> None:
     ingest_article(ctx.conn, target, ctx.http, task["article_id"], ctx.settings)
 
 
+def _exec_collect_email(ctx: WorkerContext, _task: dict) -> None:
+    if not ctx.settings.gmail_enabled:
+        logger.info("Gmail collector is disabled; retiring queued collector task")
+        return
+    stats = collect_gmail(ctx.conn, ctx.settings)
+    logger.info(
+        "Gmail: seen=%d ingested=%d ignored=%d review=%d duplicates=%d",
+        stats.seen, stats.ingested, stats.ignored, stats.review, stats.duplicates,
+    )
+
+
 _EXECUTORS = {
     "discover": _exec_discover,
     "ingest": _exec_ingest,
     "recheck": _exec_ingest,   # a recheck IS a re-ingest; the hash decides if it changed
+    "collect_email": _exec_collect_email,
 }
 
 
@@ -105,6 +121,14 @@ def _after_success(ctx: WorkerContext, task: dict) -> None:
                 ctx.conn, kind="discover", municipality_key=task["municipality_key"],
                 reason="schedule", priority=repo.PRIORITY_DISCOVER,
                 run_after=repo._ahead(ctx.settings.discover_interval_min * 60.0),
+                max_attempts=0,
+            )
+            ctx.conn.commit()
+        elif task["kind"] == "collect_email" and ctx.settings.gmail_enabled:
+            repo.enqueue_task(
+                ctx.conn, kind="collect_email", municipality_key="_gmail",
+                reason="schedule", priority=repo.PRIORITY_EMAIL,
+                run_after=repo._ahead(ctx.settings.gmail_poll_interval_min * 60.0),
                 max_attempts=0,
             )
             ctx.conn.commit()
@@ -164,9 +188,12 @@ def _janitor(ctx: WorkerContext) -> None:
         keys = [t.key for t in selected_targets(ctx.settings)]
         seeded = repo.ensure_discover_tasks(
             ctx.conn, keys, interval_min=ctx.settings.discover_interval_min)
+        email_seeded = ctx.settings.gmail_enabled and repo.ensure_email_task(ctx.conn)
         ctx.conn.commit()
         if seeded:
             logger.info("seeded %d discover task(s)", seeded)
+        if email_seeded:
+            logger.info("seeded Gmail collector task")
     except Exception:
         ctx.conn.rollback()
         logger.exception("janitor pass failed")
@@ -215,6 +242,7 @@ def run_worker(settings: Settings | None = None, *, once: bool = False,
     finishes, then the loop exits.
     """
     settings = settings or get_settings()
+    settings.validate_gmail()
     conn = db.connect(settings)
     db.init_schema(conn, settings)
     executed = 0

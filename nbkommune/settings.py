@@ -172,6 +172,30 @@ class Settings(BaseSettings):
     # Loopback port for FastAPI behind the public Better Auth gateway.
     auth_internal_port: int = Field(default=8001, ge=1, le=65535)
 
+    # ── Gmail ingestion / AI routing ────────────────────────────────────
+    # Disabled by default so existing workers do not acquire a new external
+    # dependency merely by upgrading. Enabling it requires the three OAuth
+    # credentials below and an OpenRouter key for genuinely unknown senders.
+    gmail_enabled: bool = Field(default=False)
+    gmail_client_id: str = Field(default="")
+    gmail_client_secret: SecretStr = Field(default=SecretStr(""))
+    gmail_refresh_token: SecretStr = Field(default=SecretStr(""))
+    # Prefer a dedicated Gmail label. A Gmail search query is more practical
+    # than persisting a label id because ids differ between accounts.
+    gmail_query: str = Field(default="label:kommune-news")
+    gmail_poll_interval_min: float = Field(default=5.0, gt=0)
+    gmail_batch_size: int = Field(default=100, ge=1, le=500)
+    # Scan past already-known recent messages so a first-run backlog drains on
+    # later polls instead of getting stuck behind the same newest page forever.
+    gmail_scan_limit: int = Field(default=2_000, ge=1, le=20_000)
+    # Only the cleaned text needed to route a message is sent to the model.
+    gmail_ai_body_chars: int = Field(default=12_000, ge=500, le=100_000)
+
+    openrouter_api_key: SecretStr = Field(default=SecretStr(""))
+    openrouter_model: str = Field(default="openai/gpt-4o-mini")
+    openrouter_timeout_s: float = Field(default=45.0, gt=0)
+    email_ai_confidence: float = Field(default=0.85, ge=0.0, le=1.0)
+
     # ── Scheduling / queue ──────────────────────────────────────
     # How often each target is re-discovered. News moves slower than an agenda
     # portal and 98 sites × 24/day is already plenty of traffic.
@@ -223,6 +247,23 @@ class Settings(BaseSettings):
             )
         if password and len(password) < 8:
             raise ValueError("NBK_AUTH_BOOTSTRAP_PASSWORD must be at least 8 characters")
+
+    def validate_gmail(self) -> None:
+        """Fail at worker startup when an enabled inbox cannot authenticate."""
+        if not self.gmail_enabled:
+            return
+        missing = [
+            name for name, value in (
+                ("NBK_GMAIL_CLIENT_ID", self.gmail_client_id),
+                ("NBK_GMAIL_CLIENT_SECRET", self.gmail_client_secret.get_secret_value()),
+                ("NBK_GMAIL_REFRESH_TOKEN", self.gmail_refresh_token.get_secret_value()),
+                ("NBK_OPENROUTER_API_KEY", self.openrouter_api_key.get_secret_value()),
+                ("NBK_OPENROUTER_MODEL", self.openrouter_model),
+            )
+            if not value.strip()
+        ]
+        if missing:
+            raise ValueError(f"Gmail ingestion requires {', '.join(missing)}")
 
 
 @lru_cache(maxsize=1)
