@@ -1,5 +1,4 @@
 import { cimd } from "@better-auth/cimd";
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -7,6 +6,7 @@ import { jwt } from "better-auth/plugins";
 
 import { database } from "./database.js";
 import * as schema from "./schema.js";
+import { fetchClientMetadataResource } from "./cimd-fetch.js";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
