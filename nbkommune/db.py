@@ -36,6 +36,9 @@ class DatabaseError(RuntimeError):
 
 
 class Result(Protocol):
+    rowcount: int
+    lastrowid: int | None
+
     def fetchone(self) -> dict[str, Any] | None: ...
     def fetchall(self) -> list[dict[str, Any]]: ...
 
@@ -404,6 +407,30 @@ def _table_statements() -> list[str]:
         "ON email_message(status, received_at DESC)",
         "CREATE INDEX IF NOT EXISTS ix_email_message_sender "
         "ON email_message(sender_email, received_at DESC)",
+        """
+        CREATE TABLE IF NOT EXISTS gmail_connection (
+            singleton_id       INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+            email_address      TEXT NOT NULL,
+            refresh_token_enc  TEXT NOT NULL,
+            scopes             TEXT NOT NULL,
+            connected_by       TEXT NOT NULL,
+            connected_at       TEXT NOT NULL,
+            updated_at         TEXT NOT NULL,
+            last_sync_at       TEXT,
+            last_sync_error    TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS gmail_oauth_state (
+            state_hash         TEXT PRIMARY KEY,
+            code_verifier_enc  TEXT NOT NULL,
+            actor              TEXT NOT NULL,
+            created_at         TEXT NOT NULL,
+            expires_at         TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_gmail_oauth_state_expiry "
+        "ON gmail_oauth_state(expires_at)",
         """
         CREATE VIRTUAL TABLE IF NOT EXISTS article_fts USING fts5(
             title,

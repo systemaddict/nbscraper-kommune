@@ -18,6 +18,7 @@ dependencies = [
     "readability-lxml>=0.8",     # Mozilla Readability port — one of two body extractors
     "lxml>=5",                   # fast parser backend for BeautifulSoup
     "feedparser>=6.0",           # RSS/Atom — handles the messy real-world tail
+    "cryptography>=43",          # authenticated encryption for Gmail refresh tokens
     "typer>=0.12",               # nbk CLI
     "rich>=13",                  # tables + progress
 ]

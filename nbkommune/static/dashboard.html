@@ -86,8 +86,20 @@
     .email-actions button { min-height: 2rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--foreground); cursor: pointer; }
     .email-actions button.danger { color: var(--danger); }
     .remember { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted-fg); font-size: .72rem; }
+    .integration-section { margin-top: 1rem; }
+    .integration-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .integration-copy { min-width: 0; }
+    .integration-details { margin-top: .55rem; display: grid; gap: .25rem; overflow-wrap: anywhere; }
+    .integration-actions { display: flex; flex: 0 0 auto; gap: .45rem; }
+    .integration-actions button { min-height: 2rem; padding: .4rem .7rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--foreground); color: var(--background); cursor: pointer; }
+    .integration-actions button.secondary { background: var(--background); color: var(--danger); }
+    .integration-actions button:disabled { opacity: .5; cursor: wait; }
+    .notice { margin-bottom: .8rem; padding: .65rem .75rem; border-radius: .5rem; background: var(--muted); font-size: .8rem; }
+    .notice.ok { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); }
+    .notice.bad { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+    code { font-size: .76rem; }
     @media (max-width: 1000px) { .stats { grid-template-columns: repeat(2, 1fr); } .columns { grid-template-columns: 1fr; } }
-    @media (max-width: 640px) { .shell { padding: 1rem; } header { flex-direction: column; } .stats { grid-template-columns: 1fr 1fr; } .stat-value { font-size: 1.45rem; } }
+    @media (max-width: 640px) { .shell { padding: 1rem; } header, .integration-layout { flex-direction: column; } .stats { grid-template-columns: 1fr 1fr; } .stat-value { font-size: 1.45rem; } }
     @media (prefers-color-scheme: dark) {
       :root { --background: #09090b; --foreground: #fafafa; --card: #111113; --muted: #27272a; --muted-fg: #a1a1aa; --border: #27272a; --ring: #71717a; --success: #4ade80; --warning: #fbbf24; --danger: #f87171; }
     }
@@ -143,6 +155,26 @@
           <div class="card-body" id="error-list"><div class="empty">Ingen data endnu</div></div>
         </article>
       </aside>
+    </section>
+
+    <section class="card integration-section">
+      <div class="card-head">
+        <div><h2>Gmail-indbakke</h2><p class="muted small">OAuth-forbindelse til kommunale nyheder og pressemeddelelser</p></div>
+        <span class="badge" id="gmail-badge">Henter…</span>
+      </div>
+      <div class="card-body">
+        <div id="gmail-notice" class="notice" hidden></div>
+        <div class="integration-layout">
+          <div class="integration-copy">
+            <strong id="gmail-summary">Henter Gmail-status…</strong>
+            <div class="integration-details muted small" id="gmail-details"></div>
+          </div>
+          <div class="integration-actions">
+            <button id="gmail-connect" type="button" hidden>Forbind Gmail</button>
+            <button id="gmail-disconnect" class="secondary" type="button" hidden>Afbryd</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="card article-section">
@@ -334,6 +366,115 @@
       }
     }
 
+    function renderGmail(data) {
+      const badge = $("gmail-badge");
+      const connect = $("gmail-connect");
+      const disconnect = $("gmail-disconnect");
+      connect.hidden = !data.configured;
+      disconnect.hidden = !data.connected || data.managed_by !== "oauth";
+      connect.textContent = data.connected ? "Genforbind Gmail" : "Forbind Gmail";
+      if (!data.configured) {
+        badge.textContent = "Mangler opsætning";
+        badge.className = "badge bad";
+        $("gmail-summary").textContent = "Google OAuth er ikke konfigureret på serveren";
+        $("gmail-details").innerHTML = data.redirect_uri
+          ? `Registrér callback-adressen <code>${esc(data.redirect_uri)}</code> og tilføj OAuth-hemmelighederne.`
+          : "Tilføj Google client-id, client-secret, tokennøgle og offentlig dashboard-URL.";
+        return;
+      }
+      if (!data.connected) {
+        badge.textContent = "Ikke forbundet";
+        badge.className = "badge";
+        $("gmail-summary").textContent = "Ingen Gmail-indbakke er forbundet";
+        $("gmail-details").innerHTML = `Klik Forbind Gmail og godkend read-only adgang.<span>Query: <code>${esc(data.query)}</code></span>`;
+        return;
+      }
+      badge.textContent = data.enabled ? "Forbundet" : "Forbundet · collector slukket";
+      badge.className = `badge ${data.enabled ? "ok" : ""}`;
+      $("gmail-summary").textContent = data.email_address || "Gmail-token fra miljøvariabel";
+      const details = [
+        `<span>Query: <code>${esc(data.query)}</code></span>`,
+        data.connected_at ? `<span>Forbundet ${relative(data.connected_at)} af ${esc(data.connected_by || "ukendt")}</span>` : "",
+        data.last_sync_at ? `<span>Senest synkroniseret ${relative(data.last_sync_at)}</span>` : "",
+        data.last_sync_error ? `<span class="bad">Seneste fejl: ${esc(data.last_sync_error)}</span>` : "",
+        !data.enabled ? "<span>NBK_GMAIL_ENABLED skal være true, før workeren indlæser e-mails.</span>" : "",
+      ].filter(Boolean);
+      $("gmail-details").innerHTML = details.join("");
+    }
+
+    async function refreshGmail() {
+      try {
+        const response = await fetch("/api/admin/gmail/status", {cache: "no-store"});
+        if (!response.ok) throw new Error(`API-fejl ${response.status}`);
+        renderGmail(await response.json());
+      } catch (error) {
+        $("gmail-badge").textContent = "Fejl";
+        $("gmail-badge").className = "badge bad";
+        $("gmail-summary").textContent = `Kunne ikke hente Gmail-status: ${error.message}`;
+      }
+    }
+
+    async function connectGmail() {
+      const button = $("gmail-connect");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/admin/gmail/connect", {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "X-NBK-Admin-Action": "1"},
+          body: "{}",
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || `API-fejl ${response.status}`);
+        location.assign(data.authorization_url);
+      } catch (error) {
+        button.disabled = false;
+        showGmailNotice(error.message, false);
+      }
+    }
+
+    async function disconnectGmail() {
+      if (!confirm("Afbryd Gmail og tilbagekald adgangen hos Google?")) return;
+      const button = $("gmail-disconnect");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/admin/gmail/disconnect", {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "X-NBK-Admin-Action": "1"},
+          body: "{}",
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || `API-fejl ${response.status}`);
+        showGmailNotice("Gmail-forbindelsen er afbrudt.", true);
+        await refreshGmail();
+      } catch (error) {
+        showGmailNotice(error.message, false);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function showGmailNotice(message, success) {
+      const notice = $("gmail-notice");
+      notice.textContent = message;
+      notice.className = `notice ${success ? "ok" : "bad"}`;
+      notice.hidden = false;
+    }
+
+    function showGmailCallbackResult() {
+      const url = new URL(location.href);
+      const result = url.searchParams.get("gmail");
+      if (!result) return;
+      if (result === "connected") {
+        showGmailNotice(`Gmail er forbundet${url.searchParams.get("email") ? ` som ${url.searchParams.get("email")}` : ""}.`, true);
+      } else {
+        showGmailNotice(url.searchParams.get("reason") || "Gmail kunne ikke forbindes.", false);
+      }
+      url.searchParams.delete("gmail");
+      url.searchParams.delete("email");
+      url.searchParams.delete("reason");
+      history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+
     async function emailAction(row, action) {
       const id = row.dataset.emailId;
       const municipality = row.querySelector(".email-municipality").value;
@@ -356,6 +497,7 @@
         render(await response.json());
         refreshArticles();
         refreshEmails();
+        refreshGmail();
         clearTimeout(timer);
         timer = setTimeout(refresh, 10_000);
       } catch (error) {
@@ -382,6 +524,8 @@
     });
     $("article-prev").addEventListener("click", () => { articleOffset = Math.max(0, articleOffset - articleLimit); refreshArticles(); });
     $("article-next").addEventListener("click", () => { if (articleOffset + articleLimit < articleTotal) articleOffset += articleLimit; refreshArticles(); });
+    $("gmail-connect").addEventListener("click", connectGmail);
+    $("gmail-disconnect").addEventListener("click", disconnectGmail);
     $("signout").addEventListener("click", async () => {
       await fetch("/api/auth/sign-out", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"});
       location.assign("/login");
@@ -389,6 +533,7 @@
     fetch("/api/auth/get-session", {cache: "no-store"})
       .then((response) => response.json())
       .then((session) => { $("user-email").textContent = session?.user?.email || ""; });
+    showGmailCallbackResult();
     refresh();
   </script>
 </body>

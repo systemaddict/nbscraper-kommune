@@ -49,3 +49,28 @@ def test_enabled_gmail_requires_oauth_and_openrouter_secrets():
         gmail_refresh_token="refresh",
         openrouter_api_key="router",
     ).validate_gmail()
+
+    Settings(
+        _env_file=None,
+        gmail_enabled=True,
+        gmail_client_id="client",
+        gmail_client_secret="secret",
+        gmail_token_encryption_key="x" * 32,
+        openrouter_api_key="router",
+    ).validate_gmail()
+
+
+def test_gmail_oauth_configuration_has_fixed_public_callback():
+    settings = Settings(
+        _env_file=None,
+        auth_base_url="https://dashboard.example.com/",
+        gmail_client_id="client",
+        gmail_client_secret="secret",
+        gmail_token_encryption_key="x" * 32,
+    )
+
+    settings.validate_gmail_oauth()
+    assert settings.gmail_oauth_configured is True
+    assert settings.gmail_oauth_redirect_uri == (
+        "https://dashboard.example.com/api/admin/gmail/callback"
+    )

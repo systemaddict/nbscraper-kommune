@@ -17,6 +17,7 @@ from nbkommune.email_classifier import (
     remember_decision,
 )
 from nbkommune.gmail import GmailClient, ParsedEmail, parse_gmail_message
+from nbkommune.gmail_oauth import gmail_refresh_token
 from nbkommune.records import ArticleDetail, ListedArticle, normalise_url
 from nbkommune.settings import Settings
 from nbkommune.targets import Target, registry
@@ -332,35 +333,45 @@ def collect_gmail(conn, settings: Settings) -> EmailCollectStats:
     stats = EmailCollectStats()
     errors: list[str] = []
     attempted = 0
-    with GmailClient(settings) as gmail, OpenRouterClassifier(settings) as classifier:
-        for message_id in gmail.iter_message_ids():
-            stats.seen += 1
-            existing = repo.get_email_message(conn, message_id)
-            if existing and existing["status"] not in {"new", "error"}:
-                stats.duplicates += 1
-                continue
-            if attempted >= settings.gmail_batch_size:
-                break
-            attempted += 1
-            try:
-                message = parse_gmail_message(gmail.get_message(message_id))
-                outcome = process_email(conn, settings, message, classifier=classifier)
-                if outcome == "duplicate":
+    refresh_token = gmail_refresh_token(conn, settings)
+    try:
+        with (GmailClient(settings, refresh_token=refresh_token) as gmail,
+              OpenRouterClassifier(settings) as classifier):
+            for message_id in gmail.iter_message_ids():
+                stats.seen += 1
+                existing = repo.get_email_message(conn, message_id)
+                if existing and existing["status"] not in {"new", "error"}:
                     stats.duplicates += 1
-                else:
-                    setattr(stats, outcome, getattr(stats, outcome) + 1)
-            except Exception as exc:
-                conn.rollback()
-                stats.failed += 1
-                errors.append(f"{message_id}: {type(exc).__name__}: {exc}")
-                if repo.get_email_message(conn, message_id):
-                    repo.set_email_decision(
-                        conn, message_id, municipality_key=None,
-                        classification="other", confidence=0.0, source="error",
-                        reason=str(exc)[:1000], sender_scope="unknown", status="error",
-                    )
-                    conn.commit()
-                logger.exception("could not process Gmail message %s", message_id)
-    if errors:
-        raise RuntimeError(f"{len(errors)} Gmail message(s) failed; {errors[0]}")
+                    continue
+                if attempted >= settings.gmail_batch_size:
+                    break
+                attempted += 1
+                try:
+                    message = parse_gmail_message(gmail.get_message(message_id))
+                    outcome = process_email(conn, settings, message, classifier=classifier)
+                    if outcome == "duplicate":
+                        stats.duplicates += 1
+                    else:
+                        setattr(stats, outcome, getattr(stats, outcome) + 1)
+                except Exception as exc:
+                    conn.rollback()
+                    stats.failed += 1
+                    errors.append(f"{message_id}: {type(exc).__name__}: {exc}")
+                    if repo.get_email_message(conn, message_id):
+                        repo.set_email_decision(
+                            conn, message_id, municipality_key=None,
+                            classification="other", confidence=0.0, source="error",
+                            reason=str(exc)[:1000], sender_scope="unknown", status="error",
+                        )
+                        conn.commit()
+                    logger.exception("could not process Gmail message %s", message_id)
+        if errors:
+            raise RuntimeError(f"{len(errors)} Gmail message(s) failed; {errors[0]}")
+    except Exception as exc:
+        conn.rollback()
+        repo.set_gmail_sync_result(conn, error=f"{type(exc).__name__}: {exc}")
+        conn.commit()
+        raise
+    repo.set_gmail_sync_result(conn)
+    conn.commit()
     return stats

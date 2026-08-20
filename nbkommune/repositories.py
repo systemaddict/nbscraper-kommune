@@ -465,6 +465,83 @@ def count_email_messages(conn: Connection, *, status: str | None = None) -> int:
     return int(row["n"] if row else 0)
 
 
+# ── Gmail OAuth connection ──────────────────────────────────────────────────
+def get_gmail_connection(conn: Connection) -> dict | None:
+    return conn.execute(
+        "SELECT * FROM gmail_connection WHERE singleton_id = 1"
+    ).fetchone()
+
+
+def upsert_gmail_connection(conn: Connection, *, email_address: str,
+                            refresh_token_enc: str, scopes: str,
+                            connected_by: str) -> None:
+    """Replace the singleton inbox connection. Caller commits."""
+    now = now_iso()
+    conn.execute(
+        """
+        INSERT INTO gmail_connection (
+            singleton_id, email_address, refresh_token_enc, scopes,
+            connected_by, connected_at, updated_at)
+        VALUES (1, %(email)s, %(token)s, %(scopes)s, %(actor)s, %(now)s, %(now)s)
+        ON CONFLICT (singleton_id) DO UPDATE SET
+            email_address = excluded.email_address,
+            refresh_token_enc = excluded.refresh_token_enc,
+            scopes = excluded.scopes,
+            connected_by = excluded.connected_by,
+            connected_at = excluded.connected_at,
+            updated_at = excluded.updated_at,
+            last_sync_at = NULL,
+            last_sync_error = NULL
+        """,
+        {"email": email_address.casefold().strip(), "token": refresh_token_enc,
+         "scopes": scopes, "actor": connected_by, "now": now},
+    )
+
+
+def delete_gmail_connection(conn: Connection) -> bool:
+    """Remove the local OAuth grant. Caller commits."""
+    result = conn.execute("DELETE FROM gmail_connection WHERE singleton_id = 1")
+    return bool(result.rowcount)
+
+
+def set_gmail_sync_result(conn: Connection, *, error: str | None = None) -> None:
+    """Record collector health without ever touching encrypted credentials."""
+    conn.execute(
+        """
+        UPDATE gmail_connection SET
+            last_sync_at = CASE WHEN %(error)s IS NULL THEN %(now)s ELSE last_sync_at END,
+            last_sync_error = %(error)s,
+            updated_at = %(now)s
+        WHERE singleton_id = 1
+        """,
+        {"error": error[:1000] if error else None, "now": now_iso()},
+    )
+
+
+def create_gmail_oauth_state(conn: Connection, *, state_hash: str,
+                             code_verifier_enc: str, actor: str,
+                             expires_at: str) -> None:
+    """Persist one short-lived OAuth/PKCE transaction. Caller commits."""
+    now = now_iso()
+    conn.execute("DELETE FROM gmail_oauth_state WHERE expires_at < %s", (now,))
+    conn.execute(
+        """
+        INSERT INTO gmail_oauth_state (
+            state_hash, code_verifier_enc, actor, created_at, expires_at)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (state_hash, code_verifier_enc, actor, now, expires_at),
+    )
+
+
+def consume_gmail_oauth_state(conn: Connection, state_hash: str) -> dict | None:
+    """Fetch and delete an OAuth state atomically from the caller's transaction."""
+    return conn.execute(
+        "DELETE FROM gmail_oauth_state WHERE state_hash = %s RETURNING *",
+        (state_hash,),
+    ).fetchone()
+
+
 _SEARCH_TERM = re.compile(r"[^\W_]+", re.UNICODE)
 
 

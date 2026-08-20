@@ -167,8 +167,10 @@ def parse_gmail_message(data: dict) -> ParsedEmail:
 
 class GmailClient:
     def __init__(self, settings: Settings, *,
+                 refresh_token: str | None = None,
                  transport: httpx.BaseTransport | None = None) -> None:
         self.settings = settings
+        self._refresh_token = refresh_token
         self._client = httpx.Client(timeout=30.0, transport=transport)
         self._access_token: str | None = None
 
@@ -187,7 +189,10 @@ class GmailClient:
         response = self._client.post("https://oauth2.googleapis.com/token", data={
             "client_id": self.settings.gmail_client_id,
             "client_secret": self.settings.gmail_client_secret.get_secret_value(),
-            "refresh_token": self.settings.gmail_refresh_token.get_secret_value(),
+            "refresh_token": (
+                self._refresh_token
+                or self.settings.gmail_refresh_token.get_secret_value()
+            ),
             "grant_type": "refresh_token",
         })
         response.raise_for_status()

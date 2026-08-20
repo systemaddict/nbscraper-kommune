@@ -29,6 +29,7 @@ from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.crawl import discover_target, ingest_article
 from nbkommune.email_ingest import collect_gmail
+from nbkommune.gmail_oauth import gmail_connection_available
 from nbkommune.http import HttpClient
 from nbkommune.settings import Settings, get_settings
 from nbkommune.targets import Target, registry, selected_targets
@@ -95,6 +96,9 @@ def _exec_collect_email(ctx: WorkerContext, _task: dict) -> None:
     if not ctx.settings.gmail_enabled:
         logger.info("Gmail collector is disabled; retiring queued collector task")
         return
+    if not gmail_connection_available(ctx.conn, ctx.settings):
+        logger.info("Gmail is not connected; retiring queued collector task")
+        return
     stats = collect_gmail(ctx.conn, ctx.settings)
     logger.info(
         "Gmail: seen=%d ingested=%d ignored=%d review=%d duplicates=%d",
@@ -124,7 +128,8 @@ def _after_success(ctx: WorkerContext, task: dict) -> None:
                 max_attempts=0,
             )
             ctx.conn.commit()
-        elif task["kind"] == "collect_email" and ctx.settings.gmail_enabled:
+        elif (task["kind"] == "collect_email" and ctx.settings.gmail_enabled
+              and gmail_connection_available(ctx.conn, ctx.settings)):
             repo.enqueue_task(
                 ctx.conn, kind="collect_email", municipality_key="_gmail",
                 reason="schedule", priority=repo.PRIORITY_EMAIL,
@@ -188,7 +193,11 @@ def _janitor(ctx: WorkerContext) -> None:
         keys = [t.key for t in selected_targets(ctx.settings)]
         seeded = repo.ensure_discover_tasks(
             ctx.conn, keys, interval_min=ctx.settings.discover_interval_min)
-        email_seeded = ctx.settings.gmail_enabled and repo.ensure_email_task(ctx.conn)
+        email_seeded = (
+            ctx.settings.gmail_enabled
+            and gmail_connection_available(ctx.conn, ctx.settings)
+            and repo.ensure_email_task(ctx.conn)
+        )
         ctx.conn.commit()
         if seeded:
             logger.info("seeded %d discover task(s)", seeded)

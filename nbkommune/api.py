@@ -12,15 +12,23 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from importlib.resources import files
 from typing import Annotated, Any, Literal
+from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
 from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.db import Connection
 from nbkommune.email_ingest import assign_email, ignore_email
+from nbkommune.gmail_oauth import (
+    GmailOAuthError,
+    begin_oauth,
+    complete_oauth,
+    connection_status,
+    disconnect_gmail,
+)
 from nbkommune.settings import Settings, get_settings
 from nbkommune.targets import registry
 
@@ -90,6 +98,14 @@ def _admin_actor(request: Request) -> str:
     if request.headers.get("x-nbk-admin-action") != "1":
         raise HTTPException(status_code=403, detail="Admin action header required")
     return request.headers.get("x-nbk-user-email") or "dashboard"
+
+
+def _authenticated_actor(request: Request) -> str:
+    """Identity injected by the public auth gateway for OAuth callbacks."""
+    actor = request.headers.get("x-nbk-user-email")
+    if not actor:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return actor
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -207,6 +223,64 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {"status": "ignored"}
+
+    @app.get("/api/admin/gmail/status")
+    def admin_gmail_status(
+        conn: Annotated[Connection, Depends(get_conn)],
+    ) -> dict[str, Any]:
+        return connection_status(conn, app.state.settings)
+
+    @app.post("/api/admin/gmail/connect")
+    def admin_gmail_connect(
+        request: Request,
+        conn: Annotated[Connection, Depends(get_conn)],
+    ) -> dict[str, str]:
+        actor = _admin_actor(request)
+        try:
+            authorization_url = begin_oauth(
+                conn, request.app.state.settings, actor=actor
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return {"authorization_url": authorization_url}
+
+    @app.get("/api/admin/gmail/callback")
+    def admin_gmail_callback(
+        request: Request,
+        conn: Annotated[Connection, Depends(get_conn)],
+        state: str = "",
+        code: str = "",
+        error: str | None = None,
+    ) -> RedirectResponse:
+        actor = _authenticated_actor(request)
+        if error:
+            query = urlencode({"gmail": "error", "reason": f"Google: {error}"})
+            return RedirectResponse(url=f"/?{query}", status_code=303)
+        try:
+            complete_oauth(
+                conn,
+                request.app.state.settings,
+                actor=actor,
+                state=state,
+                code=code,
+            )
+        except (GmailOAuthError, ValueError) as exc:
+            query = urlencode({"gmail": "error", "reason": str(exc)})
+            return RedirectResponse(url=f"/?{query}", status_code=303)
+        query = urlencode({"gmail": "connected"})
+        return RedirectResponse(url=f"/?{query}", status_code=303)
+
+    @app.post("/api/admin/gmail/disconnect")
+    def admin_gmail_disconnect(
+        request: Request,
+        conn: Annotated[Connection, Depends(get_conn)],
+    ) -> dict[str, Any]:
+        _admin_actor(request)
+        try:
+            revoked = disconnect_gmail(conn, request.app.state.settings)
+        except GmailOAuthError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {"status": "disconnected", "revoked": revoked}
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard() -> str:

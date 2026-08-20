@@ -17,6 +17,7 @@ from nbkommune import db
 from nbkommune import repositories as repo
 from nbkommune.crawl import discover_target, ingest_article
 from nbkommune.email_ingest import collect_gmail
+from nbkommune.gmail_oauth import gmail_connection_available
 from nbkommune.http import HttpClient
 from nbkommune.settings import get_settings
 from nbkommune.sources import make_source
@@ -228,6 +229,11 @@ def gmail(
         raise typer.BadParameter("set NBK_GMAIL_ENABLED=true first")
     conn = db.connect(settings)
     db.init_schema(conn, settings)
+    if not gmail_connection_available(conn, settings):
+        conn.close()
+        raise typer.BadParameter(
+            "connect Gmail in the dashboard before queueing the collector"
+        )
     if not now:
         queued = repo.ensure_email_task(conn)
         conn.commit()

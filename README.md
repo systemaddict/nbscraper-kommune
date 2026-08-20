@@ -183,17 +183,41 @@ Shared services such as FirstAgenda are stored as `classify_each` and resolved
 from each message's subject/body instead. Low-confidence results enter the
 authenticated dashboard review queue rather than being guessed.
 
-Create a Gmail OAuth client and refresh token with read-only Gmail access, then
-set these worker secrets:
+Create one Google Cloud OAuth client of type **Web application**, enable the
+Gmail API, and register this exact redirect URI:
+
+```text
+https://your-dashboard.example.com/api/admin/gmail/callback
+```
+
+Set these values, identically, on both the dashboard and worker containers. The
+encryption key can be generated with `openssl rand -hex 32`:
 
 ```text
 NBK_GMAIL_ENABLED=true
 NBK_GMAIL_CLIENT_ID=...
 NBK_GMAIL_CLIENT_SECRET=...
-NBK_GMAIL_REFRESH_TOKEN=...
+NBK_GMAIL_TOKEN_ENCRYPTION_KEY=<at least 32 random characters>
 NBK_GMAIL_QUERY=label:kommune-news
+```
+
+Set the classifier secret on the worker only:
+
+```text
 NBK_OPENROUTER_API_KEY=...
 ```
+
+Then log into the dashboard and click **Forbind Gmail**. Google presents the
+read-only consent screen and returns to the dashboard. The refresh token is
+stored encrypted in Bunny Database; admins never copy a user token. The OAuth
+transaction uses one-use state bound to the signed-in dashboard account plus
+PKCE. **Genforbind Gmail** rotates the grant, and **Afbryd** revokes it at Google
+and removes it locally.
+
+For a Google Workspace-owned project, configure the OAuth audience as Internal.
+If Workspace API access is restricted, add the client id in Admin Console under
+Security → Access and data control → API controls, preferably allowing only the
+Gmail read-only data requested by this app.
 
 The OpenRouter key can use the same secret value as the sibling nbscraper
 deployment, but it is configured independently as `NBK_OPENROUTER_API_KEY` and

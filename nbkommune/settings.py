@@ -174,12 +174,17 @@ class Settings(BaseSettings):
 
     # ── Gmail ingestion / AI routing ────────────────────────────────────
     # Disabled by default so existing workers do not acquire a new external
-    # dependency merely by upgrading. Enabling it requires the three OAuth
-    # credentials below and an OpenRouter key for genuinely unknown senders.
+    # dependency merely by upgrading. The app-level OAuth credentials are
+    # configured once; an admin then connects the mailbox in the dashboard.
     gmail_enabled: bool = Field(default=False)
     gmail_client_id: str = Field(default="")
     gmail_client_secret: SecretStr = Field(default=SecretStr(""))
+    # Legacy/manual fallback. New installations store the refresh token
+    # encrypted in the shared database after an admin completes OAuth.
     gmail_refresh_token: SecretStr = Field(default=SecretStr(""))
+    # Shared by dashboard and worker. It encrypts database-held refresh tokens
+    # and must be an independently generated secret of at least 32 characters.
+    gmail_token_encryption_key: SecretStr = Field(default=SecretStr(""))
     # Prefer a dedicated Gmail label. A Gmail search query is more practical
     # than persisting a label id because ids differ between accounts.
     gmail_query: str = Field(default="label:kommune-news")
@@ -195,6 +200,22 @@ class Settings(BaseSettings):
     openrouter_model: str = Field(default="openai/gpt-4o-mini")
     openrouter_timeout_s: float = Field(default=45.0, gt=0)
     email_ai_confidence: float = Field(default=0.85, ge=0.0, le=1.0)
+
+    @property
+    def gmail_oauth_redirect_uri(self) -> str:
+        """The fixed public callback registered in Google Cloud Console."""
+        if not self.auth_base_url:
+            return ""
+        return f"{self.auth_base_url.rstrip('/')}/api/admin/gmail/callback"
+
+    @property
+    def gmail_oauth_configured(self) -> bool:
+        return bool(
+            self.gmail_client_id.strip()
+            and self.gmail_client_secret.get_secret_value().strip()
+            and len(self.gmail_token_encryption_key.get_secret_value()) >= 32
+            and self.gmail_oauth_redirect_uri
+        )
 
     # ── Scheduling / queue ──────────────────────────────────────
     # How often each target is re-discovered. News moves slower than an agenda
@@ -249,21 +270,43 @@ class Settings(BaseSettings):
             raise ValueError("NBK_AUTH_BOOTSTRAP_PASSWORD must be at least 8 characters")
 
     def validate_gmail(self) -> None:
-        """Fail at worker startup when an enabled inbox cannot authenticate."""
+        """Fail at worker startup when an enabled collector cannot operate.
+
+        A refresh token may come from the legacy environment variable or from
+        the encrypted database connection created by the admin OAuth flow.
+        Database presence is deliberately checked by the worker after schema
+        initialisation rather than here in the pure settings object.
+        """
         if not self.gmail_enabled:
             return
         missing = [
             name for name, value in (
                 ("NBK_GMAIL_CLIENT_ID", self.gmail_client_id),
                 ("NBK_GMAIL_CLIENT_SECRET", self.gmail_client_secret.get_secret_value()),
-                ("NBK_GMAIL_REFRESH_TOKEN", self.gmail_refresh_token.get_secret_value()),
                 ("NBK_OPENROUTER_API_KEY", self.openrouter_api_key.get_secret_value()),
                 ("NBK_OPENROUTER_MODEL", self.openrouter_model),
             )
             if not value.strip()
         ]
+        if (not self.gmail_refresh_token.get_secret_value().strip()
+                and len(self.gmail_token_encryption_key.get_secret_value()) < 32):
+            missing.append("NBK_GMAIL_TOKEN_ENCRYPTION_KEY")
         if missing:
             raise ValueError(f"Gmail ingestion requires {', '.join(missing)}")
+
+    def validate_gmail_oauth(self) -> None:
+        """Fail an admin connect attempt with an actionable configuration error."""
+        missing = []
+        if not self.gmail_client_id.strip():
+            missing.append("NBK_GMAIL_CLIENT_ID")
+        if not self.gmail_client_secret.get_secret_value().strip():
+            missing.append("NBK_GMAIL_CLIENT_SECRET")
+        if len(self.gmail_token_encryption_key.get_secret_value()) < 32:
+            missing.append("NBK_GMAIL_TOKEN_ENCRYPTION_KEY (at least 32 characters)")
+        if not self.gmail_oauth_redirect_uri:
+            missing.append("NBK_AUTH_BASE_URL")
+        if missing:
+            raise ValueError(f"Gmail OAuth requires {', '.join(missing)}")
 
 
 @lru_cache(maxsize=1)
