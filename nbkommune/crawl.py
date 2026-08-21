@@ -26,6 +26,12 @@ from nbkommune.targets import Target
 
 logger = logging.getLogger(__name__)
 
+# Bunny/libSQL interactive transactions have a short lifetime. A paginated
+# listing can yield dozens of articles, and each sighting writes both the
+# article and its source row. Commit in bounded chunks so a healthy large
+# listing cannot time out after discovery has already succeeded.
+_DISCOVERY_WRITE_BATCH = 20
+
 
 def _json_object(value) -> dict:
     """Decode a DB JSON value defensively; corrupt diagnostics must not stop ingest."""
@@ -148,6 +154,7 @@ def discover_target(conn, target: Target, http: HttpClient,
 
     fresh: list[tuple[str, str]] = []      # new/changed → fast lane
     backlog: list[str] = []                # known but bodyless → paced lane
+    writes_since_commit = 0
     for listed in ordered:
         stats.seen += 1
         if below_floor(listed.published_at, floor):
@@ -172,6 +179,7 @@ def discover_target(conn, target: Target, http: HttpClient,
             received_at=repo.now_iso(),
             metadata={"channel": listed.channel, "listing": listed.raw},
         )
+        writes_since_commit += 1
         if decision == "new":
             stats.new += 1
             fresh.append((listed.id, "new"))
@@ -181,6 +189,15 @@ def discover_target(conn, target: Target, http: HttpClient,
         elif decision == "pending":
             stats.pending += 1
             backlog.append(listed.id)
+        if writes_since_commit >= _DISCOVERY_WRITE_BATCH:
+            conn.commit()
+            writes_since_commit = 0
+
+    # Close the article-write transaction before queue insertion. Apart from
+    # keeping Bunny's transaction window short, this means enqueueing a large
+    # first crawl never holds all article rows in the same remote transaction.
+    if writes_since_commit:
+        conn.commit()
 
     # Fresh work first and always: a press release published minutes ago must not
     # queue behind a week-old backlog item.
