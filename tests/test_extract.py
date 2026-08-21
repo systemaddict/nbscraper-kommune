@@ -234,6 +234,17 @@ class TestListingFallback:
         d = extract_article(UMBRACO_PAGE, URL, listed=listed)
         assert d.provenance["published_at"] == "listing:configured"
 
+    def test_reviewed_json_listing_date_is_identifiable(self):
+        listed = ListedArticle(
+            url=URL,
+            published_at="2026-08-10T06:00:00+00:00",
+            channel="listing",
+            raw={"mode": "configured-json"},
+        )
+        d = extract_article(UMBRACO_PAGE, URL, listed=listed)
+        assert d.published_at == "2026-08-10T06:00:00+00:00"
+        assert d.provenance["published_at"] == "listing:configured"
+
 
 class TestDomPublicationDates:
     def test_data_date_beside_published_label(self):

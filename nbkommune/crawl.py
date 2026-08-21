@@ -274,7 +274,7 @@ def ingest_article(conn, target: Target, http: HttpClient, article_id: str,
         article["channel"] == "feed"
         or published_source == "listing:configured"
         or (article["status"] == "listed"
-            and listing_raw.get("mode") == "configured")
+            and listing_raw.get("mode") in ("configured", "configured-json"))
     )
     listed = ListedArticle(
         url=url,

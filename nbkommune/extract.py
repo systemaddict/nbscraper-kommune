@@ -969,7 +969,7 @@ def extract_article(
         # from a guessed HTML-card date during repair work.
         if listed.channel == "feed":
             listed_date_source = "feed"
-        elif listed.raw.get("mode") == "configured":
+        elif listed.raw.get("mode") in ("configured", "configured-json"):
             listed_date_source = "listing:configured"
         else:
             listed_date_source = "listing"
