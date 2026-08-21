@@ -315,6 +315,7 @@ class HttpClient:
         self._scrapedo_hosts = set(self.settings.scrapedo_hosts)
         self._scrapedo_fallback_hosts = set(self.settings.scrapedo_fallback_hosts)
         self._scrapedo_render_hosts = set(self.settings.scrapedo_render_hosts)
+        self._scrapedo_super_hosts = set(self.settings.scrapedo_super_hosts)
         # host → monotonic deadline until which we prefer the proxy for it.
         self._degraded: dict[str, float] = {}
         self._degraded_lock = threading.Lock()
@@ -413,6 +414,8 @@ class HttpClient:
         host = urlparse(url).netloc
         if self._use_proxy(host):
             params = {"token": self._scrapedo_token, "url": url}
+            if host in self._scrapedo_super_hosts:
+                params["super"] = "true"
             if host in self._scrapedo_render_hosts:
                 params["render"] = "true"
                 if self.settings.scrapedo_render_wait_ms:

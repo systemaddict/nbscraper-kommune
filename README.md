@@ -399,6 +399,10 @@ endpoint. `NBK_SCRAPEDO_RENDER_WAIT_MS` controls that post-load wait (3 seconds
 by default); Gentofte's news cards are present after the wait but absent from an
 immediate rendered response.
 
+`NBK_SCRAPEDO_SUPER_HOSTS` opts individual hosts into scrape.do's residential
+rotation (`super=true`). Herlev needs it intermittently together with rendering;
+the standard rotation can otherwise return `ROTATION_FAILED` for valid articles.
+
 **Channel resolution is sticky.** A fresh `auto` resolution costs up to a dozen
 requests, so the resolved channel and its parameters are stored on the
 municipality row and reused. Re-probing every pass is slow, wasteful and impolite

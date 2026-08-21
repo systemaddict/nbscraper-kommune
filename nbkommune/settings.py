@@ -140,6 +140,11 @@ class Settings(BaseSettings):
     # Applied only to `scrapedo_render_hosts`, so ordinary proxy requests do not
     # pay the latency or credit cost.
     scrapedo_render_wait_ms: int = Field(default=3000, ge=0, le=35000)
+    # Hosts that need scrape.do's residential/mobile rotation (`super=true`).
+    # This is a narrower, more expensive fallback than ordinary proxying and is
+    # therefore explicit per host. Herlev intermittently returns ROTATION_FAILED
+    # on the standard route while succeeding with super + render.
+    scrapedo_super_hosts: Annotated[list[str], NoDecode] = Field(default_factory=list)
     # Read timeout for proxied requests. Separate from `http_timeout_s` because a
     # proxy fetch legitimately takes longer than a direct one — it is doing the
     # request on our behalf, sometimes rendering — and because scrape.do can take
@@ -270,7 +275,8 @@ class Settings(BaseSettings):
     min_body_chars: int = Field(default=200)
 
     @field_validator("targets", "scrapedo_hosts", "scrapedo_fallback_hosts",
-                     "scrapedo_render_hosts", "user_agent_fallbacks", mode="before")
+                     "scrapedo_render_hosts", "scrapedo_super_hosts",
+                     "user_agent_fallbacks", mode="before")
     @classmethod
     def _split_csv(cls, v):
         """Accept comma-separated env values (NBK_TARGETS=aarhus,odder)."""
