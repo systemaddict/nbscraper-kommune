@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import UTC, datetime
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -39,6 +40,12 @@ _NOT_ARTICLE = re.compile(
     r"/(side|page|p)/\d+/?$|\.(pdf|jpg|jpeg|png|docx?|xlsx?)$|[?&]page=", re.I
 )
 
+# A few reviewed municipal listings (currently Gentofte's press room) render a
+# compact Danish date such as ``06.07.26``. Keep support scoped to configured
+# date selectors: accepting two-digit years during generic page extraction
+# would turn unrelated version numbers into publication dates.
+_DK_SHORT_YEAR = re.compile(r"^\s*(\d{1,2})[./-](\d{1,2})[./-](\d{2})\s*$")
+
 class ListingSource:
     """Lists articles by scraping one or more listing pages."""
 
@@ -49,10 +56,30 @@ class ListingSource:
                  prefetched: dict[str, str] | None = None) -> None:
         self.target = target
         self.http = http
-        self.urls = urls or target.listing_urls
+        self.urls = self._expand_urls(urls or target.listing_urls)
         # HTML the resolver already fetched while sniffing channels — reused so
         # channel resolution costs one request, not three.
         self.prefetched = prefetched or {}
+
+    def _expand_urls(self, urls: list[str]) -> list[str]:
+        """Expand a small current-year archive template.
+
+        Some municipal archive roots expose only links to year sections. Herlev
+        is one: the actual article cards live at ``/nyheder/2026`` while
+        ``/nyheder`` contains no article links. ``{year}`` keeps that source
+        working across New Year without a registry edit; ``listing_years`` can
+        include the previous archive while a publication floor is settling.
+        """
+        current = datetime.now(UTC).year
+        years = max(1, min(int(self.target.config.get("listing_years", 1)), 3))
+        out: list[str] = []
+        for url in urls:
+            expanded = ([url.format(year=current - offset) for offset in range(years)]
+                        if "{year}" in url else [url])
+            for value in expanded:
+                if value not in out:
+                    out.append(value)
+        return out
 
     @property
     def detail(self) -> str:
@@ -134,6 +161,12 @@ class ListingSource:
             parsed = parse_danish_datetime(candidate)
             if parsed:
                 return parsed
+            short = _DK_SHORT_YEAR.match(candidate)
+            if short:
+                day, month, year = short.groups()
+                parsed = parse_danish_datetime(f"{day}.{month}.20{year}")
+                if parsed:
+                    return parsed
         return None
 
     # ── titles ──────────────────────────────────────────────────

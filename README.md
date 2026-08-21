@@ -395,7 +395,9 @@ message. There are tests asserting exactly that.
 it grows taarnby.dk's HTML from 12 KB to 111 KB. It is opt-in because it costs
 more and doubles latency, and because it is not always sufficient: a list
 populated by a later XHR still needs a wait selector or the site's own JSON
-endpoint.
+endpoint. `NBK_SCRAPEDO_RENDER_WAIT_MS` controls that post-load wait (3 seconds
+by default); Gentofte's news cards are present after the wait but absent from an
+immediate rendered response.
 
 **Channel resolution is sticky.** A fresh `auto` resolution costs up to a dozen
 requests, so the resolved channel and its parameters are stored on the
@@ -411,10 +413,10 @@ cached). Use `nbk reresolve <key>` when a site changes.
 - **3 sites are flagged `verified: false`** in the registry (Esbjerg, Ringsted,
   Skanderborg) — the URL survey could not confirm their press archive. They still
   crawl; the flag records that the source is shaky.
-- **Gentofte** 403s every identifier and is escalated to scrape.do
-  automatically, which returns its pages — but its news list is client-side and
-  is *not* recovered by `render=true` either (the list arrives in a later XHR).
-  It still yields 0 articles and needs its JSON endpoint or a wait selector.
+- **Gentofte and Herlev** require scrape.do rendering. Gentofte's XHR-backed
+  listing additionally needs `NBK_SCRAPEDO_RENDER_WAIT_MS`; Herlev's article
+  cards live on the year archive rather than the `/nyheder` root. Both are
+  configured and covered by live source checks.
 - **Many sites supply no publication date at all** — see `nbk stats`, `undated`
   column. Those articles are stored with `published_at = NULL` rather than being
   dated by a modification stamp. Fixing a site means finding a `date_selector`

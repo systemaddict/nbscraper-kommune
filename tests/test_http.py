@@ -189,6 +189,21 @@ class TestScrapedoEscalation:
         assert "kommune.dk" in request_url
 
     @respx.mock
+    def test_rendered_host_waits_for_xhr_backed_listing(self):
+        proxied = respx.get(url__startswith="https://api.scrape.do/").mock(
+            return_value=httpx.Response(200, html="ok"))
+        settings = self._proxied(
+            scrapedo_hosts=["kommune.dk"],
+            scrapedo_render_hosts=["kommune.dk"],
+            scrapedo_render_wait_ms=3000,
+        )
+        with HttpClient(settings) as http:
+            http.get(URL)
+        request_url = str(proxied.calls[0].request.url)
+        assert "render=true" in request_url
+        assert "customWait=3000" in request_url
+
+    @respx.mock
     def test_the_token_never_becomes_the_articles_url(self):
         """`get_text` returns the URL a caller stores. If that were the proxy URL,
         the token would be written into the database as the article's identity."""

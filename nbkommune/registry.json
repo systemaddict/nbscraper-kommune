@@ -127,15 +127,22 @@
     "name": "Billund",
     "site_url": "https://www.billund.dk",
     "news_url": "https://www.billund.dk/om-kommunen/presse/nyheder-og-pressekontakt/",
-    "press_url": "https://www.billund.dk/om-kommunen/presse/nyheder-og-pressekontakt/",
-    "channel": "auto",
+    "press_url": "https://via.ritzau.dk/nyhedsrum/13560004/billund-kommune/r",
+    "channel": "listing",
     "source_type": "tredjepart",
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/presse/nyheder-og-pressekontakt"
+      "listing_urls": [
+        "https://via.ritzau.dk/nyhedsrum/13560004/billund-kommune/r"
+      ],
+      "item_selector": "article",
+      "link_selector": "a[href*='/pressemeddelelse/']",
+      "title_selector": "h2",
+      "summary_selector": "[data-cypress='grid-card-content']",
+      "date_selector": "h2 > small"
     },
-    "note": "Fælles side; linker videre til Ritzau-nyhedsrum for selve pressemeddelelserne. Siden er reelt pressekontakt; selve arkivet ligger på via.ritzau.dk/nyhedsrum/13560004."
+    "note": "Billunds egen side er den officielle nyhedsvisning, men dens js-ritzau-list henter de samme udgivelser fra kommunens Via Ritzau-nyhedsrum. Ritzau-listen crawles som kanonisk kilde for at undgå dubletter; siden og det eksterne pressearkiv er begge registreret."
   },
   {
     "key": "bornholm",
@@ -393,14 +400,22 @@
     "site_url": "https://gentofte.dk",
     "news_url": "https://gentofte.dk/om-kommunen/nyheder-og-presse/nyheder/",
     "press_url": "https://gentofte.dk/om-kommunen/nyheder-og-presse/pressemeddelelser/",
-    "channel": "auto",
+    "channel": "listing",
     "source_type": "separat",
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/om-kommunen/nyheder-og-presse/nyheder"
+      "listing_urls": [
+        "https://gentofte.dk/om-kommunen/nyheder-og-presse/nyheder/",
+        "https://gentofte.dk/om-kommunen/nyheder-og-presse/pressemeddelelser/"
+      ],
+      "item_selector": ".facetted-list__col, .press-releases__item",
+      "link_selector": "a[href]",
+      "title_selector": ".news-list-item__title, .press-releases__item-header",
+      "summary_selector": ".news-list-item__description, .press-releases__item-description",
+      "date_selector": ".news-list-item__date, .press-releases__item-date"
     },
-    "note": "To adskilte, verificerede arkivsider."
+    "note": "To arkiver bag WAF. Kræver scrape.do med JS-rendering og en kort ventetid på den XHR-populerede nyhedsliste."
   },
   {
     "key": "gladsaxe",
@@ -546,15 +561,19 @@
     "name": "Herlev",
     "site_url": "https://herlev.dk",
     "news_url": "https://herlev.dk/nyheder",
-    "press_url": "https://herlev.dk/pressemeddelelser",
-    "channel": "auto",
-    "source_type": "separat",
+    "press_url": "https://herlev.dk/nyheder",
+    "channel": "listing",
+    "source_type": "faelles",
     "enabled": true,
     "verified": true,
     "config": {
+      "listing_urls": [
+        "https://herlev.dk/nyheder/{year}"
+      ],
+      "listing_years": 2,
       "url_prefix": "/nyheder"
     },
-    "note": "To separate sider, begge verificeret aktive."
+    "note": "Nyheder og pressemeddelelser ligger i årsarkivet. Cloudflare kræver scrape.do med JS-rendering; roden /nyheder indeholder kun årslinks."
   },
   {
     "key": "herning",

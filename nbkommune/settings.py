@@ -134,6 +134,12 @@ class Settings(BaseSettings):
     # populated by a later XHR still needs a wait selector or the site's own
     # JSON endpoint, so check with `nbk resolve` before enabling a site.
     scrapedo_render_hosts: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    # Give XHR-backed listings a short window to populate after the browser's
+    # initial page load. Gentofte's rendered shell contains no news cards at
+    # all without this wait, but exposes the complete list after about 3 s.
+    # Applied only to `scrapedo_render_hosts`, so ordinary proxy requests do not
+    # pay the latency or credit cost.
+    scrapedo_render_wait_ms: int = Field(default=3000, ge=0, le=35000)
     # Read timeout for proxied requests. Separate from `http_timeout_s` because a
     # proxy fetch legitimately takes longer than a direct one — it is doing the
     # request on our behalf, sometimes rendering — and because scrape.do can take

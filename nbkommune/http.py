@@ -415,6 +415,8 @@ class HttpClient:
             params = {"token": self._scrapedo_token, "url": url}
             if host in self._scrapedo_render_hosts:
                 params["render"] = "true"
+                if self.settings.scrapedo_render_wait_ms:
+                    params["customWait"] = str(self.settings.scrapedo_render_wait_ms)
             return _SCRAPEDO_ENDPOINT + "?" + urlencode(params), host
         return url, host
 

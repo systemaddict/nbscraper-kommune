@@ -1,6 +1,8 @@
 """The three discovery channels, and the crawl's new/changed/pending decision."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import httpx
 import respx
 
@@ -270,6 +272,42 @@ class TestListingSource:
         markup, so a dead selector must fall back rather than return nothing."""
         target = _target(config={"item_selector": ".does-not-exist"})
         assert self._found(target)
+
+    def test_current_year_archive_url_is_expanded(self):
+        target = _target(config={
+            "listing_urls": ["https://testby.dk/nyheder/{year}"],
+            "listing_years": 2,
+        })
+        source = ListingSource(target, None, urls=target.config["listing_urls"])
+        year = datetime.now(UTC).year
+        assert source.urls == [
+            f"https://testby.dk/nyheder/{year}",
+            f"https://testby.dk/nyheder/{year - 1}",
+        ]
+
+    def test_configured_listing_can_link_to_external_press_room(self):
+        html = """<div class='press-releases__item'>
+          <a href='https://press.example/message/123'>
+            <p class='press-releases__item-date'>06.07.26</p>
+            <h6 class='press-releases__item-header'>Ansvarlig brug af AI</h6>
+            <div class='press-releases__item-description'>Et kort resume.</div>
+          </a></div>"""
+        target = _target(config={
+            "item_selector": ".press-releases__item",
+            "link_selector": "a[href]",
+            "title_selector": ".press-releases__item-header",
+            "summary_selector": ".press-releases__item-description",
+            "date_selector": ".press-releases__item-date",
+        })
+        source = ListingSource(
+            target, None, urls=["https://testby.dk/presse"],
+            prefetched={"https://testby.dk/presse": html},
+        )
+        article = source.list_articles()[0]
+        assert article.url == "https://press.example/message/123"
+        assert article.title == "Ansvarlig brug af AI"
+        assert article.summary == "Et kort resume."
+        assert article.published_at == "2026-07-05T22:00:00+00:00"
 
 
 # ── the discovery decision ───────────────────────────────────────────────────
