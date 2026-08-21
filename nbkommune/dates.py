@@ -47,7 +47,7 @@ _WEEKDAYS = r"(?:mandag|tirsdag|onsdag|torsdag|fredag|lørdag|søndag)"
 # the time separator is a period as often as a colon in Danish rendering.
 _DK_LONG = re.compile(
     rf"(?:{_WEEKDAYS}\s+)?(?:den\s+)?(\d{{1,2}})\.?\s+"
-    rf"([a-zæøå]+)\s+(\d{{4}})"
+    rf"([a-zæøå]+)\.?\s+(\d{{4}})"
     rf"(?:\s*(?:kl\.?|,)?\s*(\d{{1,2}})[.:](\d{{2}})(?:[.:](\d{{2}}))?)?",
     re.I,
 )

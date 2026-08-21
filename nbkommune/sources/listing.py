@@ -86,6 +86,8 @@ class ListingSource:
     def detail(self) -> str:
         if self.target.config.get("json_listing"):
             mode = "configured-json"
+        elif self.target.config.get("html_post_listing"):
+            mode = "configured-html-post"
         else:
             mode = "configured" if self.target.config.get("item_selector") else "heuristic"
         return f"{mode}: {', '.join(self.urls)}"
@@ -165,6 +167,60 @@ class ListingSource:
                 break
         return out
 
+    # ── configured HTML POST mode ──────────────────────────────
+    def _from_html_post_listing(self) -> list[ListedArticle]:
+        """Read HTML fragments from a CSRF-protected, paginated POST endpoint.
+
+        The initial listing GET establishes the cookie and exposes the request
+        token.  Card parsing then uses the same reviewed selectors as ordinary
+        configured HTML listings, keeping this transport detail out of the
+        extraction logic.
+        """
+        cfg = self.target.config["html_post_listing"]
+        if not self.urls:
+            return []
+        shell, shell_url = self._html(self.urls[0])
+        shell_soup = BeautifulSoup(shell, "lxml")
+        token_selector = str(cfg.get(
+            "csrf_selector", "input[name='__RequestVerificationToken']"
+        ))
+        token_node = shell_soup.select_one(token_selector)
+        token = token_node.get("value") if token_node is not None else None
+        if not isinstance(token, str) or not token.strip():
+            logger.warning("%s: CSRF token selector %r matched nothing on %s",
+                           self.target.key, token_selector, shell_url)
+            return []
+
+        endpoint = urljoin(shell_url, str(cfg["url"]))
+        body = dict(cfg.get("body", {}))
+        page_field = str(cfg.get("page_field", "page"))
+        max_pages = max(1, min(int(cfg.get("max_pages", 1)), 50))
+        last_selector = cfg.get("last_selector")
+        csrf_header = str(cfg.get("csrf_header", "X-CSRF-Token"))
+        out: list[ListedArticle] = []
+        seen: set[str] = set()
+
+        for page in range(1, max_pages + 1):
+            payload = {**body, page_field: page}
+            try:
+                html, _ = self.http.post_json_text(
+                    endpoint, payload, headers={csrf_header: token.strip()}
+                )
+            except Exception as exc:
+                logger.warning("%s: HTML POST listing page %d failed: %s",
+                               self.target.key, page, exc)
+                break
+            soup = BeautifulSoup(html, "lxml")
+            found = self._from_selectors(soup, shell_url)
+            for article in found:
+                if article.id not in seen:
+                    seen.add(article.id)
+                    out.append(article)
+            if not found or (isinstance(last_selector, str)
+                             and soup.select_one(last_selector) is not None):
+                break
+        return out
+
     # ── configured mode ─────────────────────────────────────────
     def _from_selectors(self, soup: BeautifulSoup, page_url: str) -> list[ListedArticle]:
         cfg = self.target.config
@@ -175,7 +231,12 @@ class ListingSource:
             link = row.select_one(link_selector) if link_selector else None
             if link is None or not isinstance(link.get("href"), str):
                 continue
-            url = urljoin(page_url, link["href"].strip())
+            href = link["href"].strip()
+            # Some XHR listings pad their last page with empty cards linked to
+            # "#".  They are layout placeholders, not articles.
+            if not href or href.startswith(("#", "javascript:")):
+                continue
+            url = urljoin(page_url, href)
             title = None
             if cfg.get("title_selector"):
                 el = row.select_one(cfg["title_selector"])
@@ -326,6 +387,8 @@ class ListingSource:
     def list_articles(self) -> list[ListedArticle]:
         if self.target.config.get("json_listing"):
             return self._from_json_listing()
+        if self.target.config.get("html_post_listing"):
+            return self._from_html_post_listing()
         configured = bool(self.target.config.get("item_selector"))
         out: list[ListedArticle] = []
         seen: set[str] = set()

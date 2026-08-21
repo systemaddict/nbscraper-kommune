@@ -1,6 +1,7 @@
 """The three discovery channels, and the crawl's new/changed/pending decision."""
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 import httpx
@@ -333,6 +334,55 @@ class TestListingSource:
         assert found[0].summary == "Et kort resumé."
         assert found[0].published_at == "2026-08-18T22:00:00+00:00"
         assert found[0].raw["mode"] == "configured-json"
+
+    @respx.mock
+    def test_configured_html_post_listing_reuses_csrf_session_and_paginates(self):
+        shell = """<form><input name='__RequestVerificationToken'
+          value='token-123'></form><div id='list__cards'></div>"""
+        first = """<div class='card card__list' data-islast='false'>
+          <a href='/nyheder/foerste'><div class='card__list__content'>
+            <div class='tags-container'><div class='label'><span>19. aug. 2026</span></div></div>
+            <h2>Første nyhed</h2><p>Første resumé.</p>
+          </div></a></div>"""
+        second = """<div class='card card__list' data-islast='true'>
+          <a href='/nyheder/anden'><div class='card__list__content'>
+            <div class='tags-container'><div class='label'><span>13. aug. 2026</span></div></div>
+            <h2>Anden nyhed</h2><p>Andet resumé.</p>
+          </div></a></div>
+          <div class='card card__list' data-islast='true'>
+            <a href='#'><h2></h2><p></p></a>
+          </div>"""
+        respx.get("https://testby.dk/nyheder").mock(
+            return_value=httpx.Response(200, text=shell,
+                                        headers={"set-cookie": "session=abc"}))
+        endpoint = respx.post("https://testby.dk/surface/list").mock(
+            side_effect=[httpx.Response(200, text=first),
+                         httpx.Response(200, text=second)])
+        target = _target(config={
+            "item_selector": ".card.card__list",
+            "link_selector": "a[href]",
+            "title_selector": "h2",
+            "summary_selector": ".card__list__content > p",
+            "date_selector": ".tags-container .label span",
+            "html_post_listing": {
+                "url": "/surface/list",
+                "page_field": "page",
+                "max_pages": 5,
+                "last_selector": ".card[data-islast='true']",
+                "body": {"pagesize": 100, "currentPageId": "5245"},
+            },
+        })
+        with HttpClient(_settings()) as http:
+            found = ListingSource(target, http).list_articles()
+
+        assert [article.title for article in found] == ["Første nyhed", "Anden nyhed"]
+        assert found[0].summary == "Første resumé."
+        assert found[0].published_at == "2026-08-18T22:00:00+00:00"
+        assert len(endpoint.calls) == 2
+        assert endpoint.calls[0].request.headers["x-csrf-token"] == "token-123"
+        assert endpoint.calls[0].request.headers["cookie"] == "session=abc"
+        assert json.loads(endpoint.calls[0].request.content)["page"] == 1
+        assert json.loads(endpoint.calls[1].request.content)["page"] == 2
 
     def test_configured_listing_can_link_to_external_press_room(self):
         html = """<div class='press-releases__item'>

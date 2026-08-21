@@ -610,6 +610,55 @@ class HttpClient:
             self._public_url(url, resp),
         )
 
+    def post_json_text(self, url: str, payload: dict,
+                       *, headers: dict[str, str] | None = None,
+                       user_agent: str | None = None) -> tuple[str, str]:
+        """POST JSON to a public same-origin listing endpoint and decode it.
+
+        A few municipal CMSes ship an empty HTML listing shell and populate it
+        through a CSRF-protected JSON POST.  The shared client is important here:
+        it preserves the cookie established while fetching that shell.  Unlike
+        GET discovery this deliberately does not proxy; replaying an origin
+        cookie and CSRF token through a third party would both be fragile and
+        unnecessary for the reviewed endpoints using this method.
+        """
+        if self._robots is not None and not self._robots.allowed(url):
+            raise RobotsDenied(url)
+
+        host = urlparse(url).netloc
+        agent = self._agents_for(host, user_agent)[0]
+
+        @retry(
+            stop=stop_after_attempt(self.settings.http_max_retries),
+            wait=wait_exponential(multiplier=1, max=20),
+            retry=retry_if_exception_type(
+                (httpx.TransportError, httpx.HTTPStatusError, WafBlocked)
+            ),
+            reraise=True,
+        )
+        def _do() -> httpx.Response:
+            self._gate.wait(host)
+            request_headers = {"User-Agent": agent, **(headers or {})}
+            resp = self._client.post(url, json=payload, headers=request_headers)
+            reason = cloudflare_reason(resp.status_code, resp.headers, resp.content)
+            if reason:
+                raise CloudflareBlocked(url, reason, request=resp.request, response=resp)
+            if resp.status_code >= 500 or resp.status_code == 429:
+                raise TransientHttpError(url, request=resp.request, response=resp)
+            if resp.status_code in PERMANENT_STATUSES:
+                raise PermanentHttpError(url, resp.status_code)
+            if resp.status_code >= 400:
+                raise TransientHttpError(url, request=resp.request, response=resp)
+            if len(resp.content) > self.settings.max_response_bytes:
+                raise PermanentHttpError(url, resp.status_code)
+            marker = soft_block_marker(resp.status_code, resp.content)
+            if marker:
+                raise WafBlocked(url, marker)
+            return resp
+
+        resp = _do()
+        return decode_html(resp.content, resp.headers.get("content-type")), str(resp.url)
+
     def get_bytes(self, url: str, *, user_agent: str | None = None) -> tuple[bytes, str]:
         """GET without decoding — for XML (sitemaps, feeds), where the parser
         wants the raw bytes and its own declared encoding."""

@@ -748,9 +748,47 @@
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/aktuelt-og-presse/nyheder"
+      "url_prefix": "/aktuelt-og-presse/nyheder",
+      "item_selector": ".card.card__list",
+      "link_selector": "a[href]",
+      "title_selector": "h2",
+      "summary_selector": ".card__list__content > p",
+      "date_selector": ".tags-container .label span",
+      "html_post_listing": {
+        "url": "/surface/FilterListe/GetFilterlisteContent",
+        "csrf_selector": "input[name='__RequestVerificationToken']",
+        "csrf_header": "X-CSRF-Token",
+        "page_field": "page",
+        "max_pages": 3,
+        "last_selector": ".card[data-islast='true']",
+        "body": {
+          "gridView": "",
+          "imageCrop": "",
+          "currentPageType": "listPage",
+          "hideImage": false,
+          "hideDescription": false,
+          "hideDate": false,
+          "dateFormat": "dd. MMM yyyy",
+          "alignImageLeft": false,
+          "lang": "da",
+          "pagesize": 100,
+          "currentPageId": "5245",
+          "parentPageId": "5245",
+          "tags": "",
+          "defaultTags": "",
+          "startLetter": "",
+          "query": "",
+          "loadMore": false,
+          "year": "",
+          "month": "",
+          "customTags": "",
+          "dontSortByDate": false,
+          "sortBy": "",
+          "hasCustomTags": false
+        }
+      }
     },
-    "note": "Fælles side; separat presseside er kun kontakt."
+    "note": "Fælles side; nyheder og pressemeddelelser hentes fra sidens dynamiske liste-endpoint."
   },
   {
     "key": "ishoej",
