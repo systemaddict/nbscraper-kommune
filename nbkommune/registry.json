@@ -597,14 +597,30 @@
     "site_url": "https://www.hillerod.dk",
     "news_url": "https://www.hillerod.dk/nyheder-og-fakta/nyheder/",
     "press_url": "",
-    "channel": "auto",
+    "channel": "listing",
     "source_type": "kun_nyheder",
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder-og-fakta/nyheder"
+      "url_prefix": "/nyheder-og-fakta/nyheder",
+      "json_listing": {
+        "url": "/api/news-list",
+        "params": {
+          "nodeId": "1125",
+          "tagId": "0"
+        },
+        "page_param": "page",
+        "max_pages": 5,
+        "items_field": "news",
+        "total_pages_field": "totalPages",
+        "url_field": "url",
+        "title_field": "title",
+        "summary_field": "manchet",
+        "date_field": "date",
+        "id_field": "id"
+      }
     },
-    "note": "Ingen dedikeret pressemeddelelses-side fundet."
+    "note": "Nyhedslisten er en tom Vue-holder i HTML og hentes fra sidens offentlige /api/news-list-endpoint. Ingen dedikeret pressemeddelelsesside fundet."
   },
   {
     "key": "hjoerring",
@@ -885,14 +901,15 @@
     "site_url": "https://lejre.dk",
     "news_url": "https://lejre.dk/nyheder",
     "press_url": "",
-    "channel": "auto",
+    "channel": "feed",
     "source_type": "kun_nyheder",
     "enabled": true,
     "verified": true,
     "config": {
-      "url_prefix": "/nyheder"
+      "url_prefix": "/alle-nyheder",
+      "feed_url": "https://lejre.dk/gbapi/rss/feed?id=MDI1ZWQxNzEtODRjYS00ZTlhLTg0OWYtYTFkMDYzMDc0MjRkfDIwYTM0N2Q5LTE2YTQtNGExZi04ODYyLTBmNGE2Y2JkMzQwOA%3D%3D"
     },
-    "note": "Kun en pressekontaktside uden arkiv."
+    "note": "Den officielle nyhedsside annoncerer et GoPublic RSS-feed med artikler under /alle-nyheder/. Ingen separat pressemeddelelsesside fundet."
   },
   {
     "key": "lemvig",

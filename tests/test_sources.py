@@ -285,6 +285,55 @@ class TestListingSource:
             f"https://testby.dk/nyheder/{year - 1}",
         ]
 
+    @respx.mock
+    def test_configured_json_listing_is_paginated_and_mapped(self):
+        first = {
+            "success": True,
+            "totalPages": 2,
+            "news": [{
+                "id": 21684,
+                "title": "En ny børnehave er åbnet",
+                "manchet": "Et kort resumé.",
+                "url": "/nyheder/2026/en-ny-boernehave-er-aabnet/",
+                "date": "19. august 2026",
+            }],
+        }
+        second = {
+            "success": True,
+            "totalPages": 2,
+            "news": [{
+                "id": 21620,
+                "title": "Ny cykelsti",
+                "manchet": "Endnu et resumé.",
+                "url": "/nyheder/2026/ny-cykelsti/",
+                "date": "7. august 2026",
+            }],
+        }
+        page_one = respx.get("https://testby.dk/api/news-list", params={
+            "nodeId": "1125", "tagId": "0", "page": "1",
+        }).mock(return_value=httpx.Response(200, json=first))
+        page_two = respx.get("https://testby.dk/api/news-list", params={
+            "nodeId": "1125", "tagId": "0", "page": "2",
+        }).mock(return_value=httpx.Response(200, json=second))
+        target = _target(config={"json_listing": {
+            "url": "/api/news-list",
+            "params": {"nodeId": "1125", "tagId": "0"},
+            "max_pages": 5,
+            "items_field": "news",
+            "total_pages_field": "totalPages",
+            "summary_field": "manchet",
+        }})
+        with HttpClient(_settings()) as http:
+            found = ListingSource(target, http).list_articles()
+        assert page_one.called and page_two.called
+        assert [article.title for article in found] == [
+            "En ny børnehave er åbnet", "Ny cykelsti",
+        ]
+        assert found[0].url == "https://testby.dk/nyheder/2026/en-ny-boernehave-er-aabnet/"
+        assert found[0].summary == "Et kort resumé."
+        assert found[0].published_at == "2026-08-18T22:00:00+00:00"
+        assert found[0].raw["mode"] == "configured-json"
+
     def test_configured_listing_can_link_to_external_press_room(self):
         html = """<div class='press-releases__item'>
           <a href='https://press.example/message/123'>

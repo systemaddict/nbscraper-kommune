@@ -16,10 +16,11 @@ the sole publication source. Heuristic listing discovery never guesses dates.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import UTC, datetime
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
@@ -83,7 +84,10 @@ class ListingSource:
 
     @property
     def detail(self) -> str:
-        mode = "configured" if self.target.config.get("item_selector") else "heuristic"
+        if self.target.config.get("json_listing"):
+            mode = "configured-json"
+        else:
+            mode = "configured" if self.target.config.get("item_selector") else "heuristic"
         return f"{mode}: {', '.join(self.urls)}"
 
     @property
@@ -96,6 +100,70 @@ class ListingSource:
         if cached is not None:
             return cached, url
         return self.http.get_text(url)
+
+    # ── configured JSON mode ───────────────────────────────────
+    def _from_json_listing(self) -> list[ListedArticle]:
+        """Read a paginated public JSON listing described by target config.
+
+        Several kommune pages render an empty client-side shell while exposing
+        the actual cards through a small same-origin endpoint. Field names and
+        pagination differ, so the mapping stays in the registry rather than in
+        site-specific Python.
+        """
+        cfg = self.target.config["json_listing"]
+        endpoint = urljoin(self.target.site_url + "/", str(cfg["url"]))
+        params = {str(key): str(value) for key, value in cfg.get("params", {}).items()}
+        page_param = str(cfg.get("page_param", "page"))
+        max_pages = max(1, min(int(cfg.get("max_pages", 1)), 50))
+        items_field = str(cfg.get("items_field", "items"))
+        total_pages_field = str(cfg.get("total_pages_field", "totalPages"))
+        out: list[ListedArticle] = []
+
+        for page in range(1, max_pages + 1):
+            query = urlencode({**params, page_param: page})
+            request_url = endpoint + ("&" if "?" in endpoint else "?") + query
+            try:
+                payload, final = self.http.get_text(request_url)
+                data = json.loads(payload)
+            except Exception as exc:
+                logger.warning("%s: JSON listing page %d failed: %s",
+                               self.target.key, page, exc)
+                break
+            if not isinstance(data, dict):
+                logger.warning("%s: JSON listing returned a non-object on page %d",
+                               self.target.key, page)
+                break
+            items = data.get(items_field)
+            if not isinstance(items, list):
+                logger.warning("%s: JSON listing field %r is not a list on page %d",
+                               self.target.key, items_field, page)
+                break
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                raw_url = item.get(str(cfg.get("url_field", "url")))
+                if not isinstance(raw_url, str) or not raw_url.strip():
+                    continue
+                url = urljoin(final, raw_url.strip())
+                title = item.get(str(cfg.get("title_field", "title")))
+                if looks_like_document(url, title if isinstance(title, str) else None):
+                    continue
+                summary = item.get(str(cfg.get("summary_field", "summary")))
+                date_value = item.get(str(cfg.get("date_field", "date")))
+                out.append(ListedArticle(
+                    url=url,
+                    title=title if isinstance(title, str) else None,
+                    summary=summary if isinstance(summary, str) else None,
+                    published_at=(parse_danish_datetime(date_value)
+                                  if isinstance(date_value, str) else None),
+                    channel=self.channel,
+                    raw={"listing_url": endpoint, "mode": "configured-json",
+                         "source_id": item.get(str(cfg.get("id_field", "id")))},
+                ))
+            total_pages = data.get(total_pages_field)
+            if not items or not isinstance(total_pages, int) or page >= total_pages:
+                break
+        return out
 
     # ── configured mode ─────────────────────────────────────────
     def _from_selectors(self, soup: BeautifulSoup, page_url: str) -> list[ListedArticle]:
@@ -256,6 +324,8 @@ class ListingSource:
         return out
 
     def list_articles(self) -> list[ListedArticle]:
+        if self.target.config.get("json_listing"):
+            return self._from_json_listing()
         configured = bool(self.target.config.get("item_selector"))
         out: list[ListedArticle] = []
         seen: set[str] = set()
